@@ -1,0 +1,3 @@
+curl -X POST https://aoo9jdvc18.execute-api.us-east-1.amazonaws.com/dev/usuarios \
+  -H "Content-Type: application/json" \
+  -d '{"usuarios":[{"nome":"Urso","idade":100,"email":"urso@email.com"}]}'
