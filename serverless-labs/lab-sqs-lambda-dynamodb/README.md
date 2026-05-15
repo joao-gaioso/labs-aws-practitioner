@@ -1,4 +1,4 @@
-# Lab: Sqs Lambda Dynamodb
+# Lab: SQS Lambda Dynamodb
 
 ## 📋 Descrição
 
