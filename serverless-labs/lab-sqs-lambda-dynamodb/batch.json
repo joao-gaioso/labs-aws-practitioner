@@ -1,0 +1,14 @@
+[
+  {
+    "Id": "1",
+    "MessageBody": "{\"produto\":\"Webcam\",\"quantidade\":2,\"preco\":200,\"cliente\":\"Carlos Souza\"}"
+  },
+  {
+    "Id": "2",
+    "MessageBody": "{\"produto\":\"Headset\",\"quantidade\":4,\"preco\":120,\"cliente\":\"Julia Oliveira\"}"
+  },
+  {
+    "Id": "3",
+    "MessageBody": "{\"produto\":\"SSD 1TB\",\"quantidade\":1,\"preco\":450,\"cliente\":\"Roberto Alves\"}"
+  }
+]
