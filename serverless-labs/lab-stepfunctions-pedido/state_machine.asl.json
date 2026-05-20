@@ -1,0 +1,87 @@
+{
+	"Comment": "Fluxo de aprovação de pedido: valida → verifica estoque → calcula total → aprova ou rejeita",
+	"QueryLanguage": "JSONata",
+	"StartAt": "ValidarPedido",
+	"States": {
+		"ValidarPedido": {
+			"Type": "Task",
+			"Comment": "Chama a Lambda que valida os campos obrigatórios do pedido",
+			"Resource": "arn:aws:states:::lambda:invoke",
+			"Arguments": {
+				"FunctionName": "${LAMBDA_VALIDA_ARN}",
+				"Payload": "{% $states.input %}"
+			},
+			"Output": "{% $states.result.Payload %}",
+			"Next": "PedidoEhValido?"
+		},
+		"PedidoEhValido?": {
+			"Type": "Choice",
+			"Comment": "Verifica o campo 'valido' retornado pela Lambda de validação",
+			"Choices": [
+				{
+					"Condition": "{% $states.input.valido = true %}",
+					"Next": "VerificarEstoque"
+				}
+			],
+			"Default": "PedidoRejeitado"
+		},
+		"VerificarEstoque": {
+			"Type": "Task",
+			"Comment": "Chama a Lambda que verifica se há estoque suficiente",
+			"Resource": "arn:aws:states:::lambda:invoke",
+			"Arguments": {
+				"FunctionName": "${LAMBDA_ESTOQUE_ARN}",
+				"Payload": "{% $states.input %}"
+			},
+			"Output": "{% $states.result.Payload %}",
+			"Next": "TemEstoque?"
+		},
+		"TemEstoque?": {
+			"Type": "Choice",
+			"Comment": "Verifica o campo 'tem_estoque' retornado pela Lambda de estoque",
+			"Choices": [
+				{
+					"Condition": "{% $states.input.tem_estoque = true %}",
+					"Next": "CalcularTotal"
+				}
+			],
+			"Default": "PedidoRejeitado"
+		},
+		"CalcularTotal": {
+			"Type": "Task",
+			"Comment": "Chama a Lambda que calcula o total com desconto por quantidade",
+			"Resource": "arn:aws:states:::lambda:invoke",
+			"Arguments": {
+				"FunctionName": "${LAMBDA_TOTAL_ARN}",
+				"Payload": "{% $states.input %}"
+			},
+			"Output": "{% $states.result.Payload %}",
+			"Next": "PedidoAprovado"
+		},
+		"PedidoAprovado": {
+			"Type": "Pass",
+			"Comment": "Estado final de sucesso — monta a resposta final com status aprovado",
+			"Output": {
+				"status": "APROVADO",
+				"cliente": "{% $states.input.cliente %}",
+				"produto": "{% $states.input.produto %}",
+				"quantidade": "{% $states.input.quantidade %}",
+				"total": "{% $states.input.total %}",
+				"percentual_desconto": "{% $states.input.percentual_desconto %}",
+				"mensagem": "{% 'Pedido aprovado para ' & $states.input.cliente & '! Total: R$ ' & $string($states.input.total) %}"
+			},
+			"End": true
+		},
+		"PedidoRejeitado": {
+			"Type": "Pass",
+			"Comment": "Estado final de falha — monta a resposta com o motivo da rejeição",
+			"Output": {
+				"status": "REJEITADO",
+				"cliente": "{% $states.input.cliente %}",
+				"produto": "{% $states.input.produto %}",
+				"motivo": "{% $exists($states.input.motivo) ? $states.input.motivo : 'Estoque insuficiente para a quantidade solicitada' %}"
+			},
+			"End": true
+		}
+	}
+}
