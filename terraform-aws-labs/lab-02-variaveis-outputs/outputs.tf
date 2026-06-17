@@ -46,16 +46,7 @@ output "arns_dos_buckets" {
 #   value       = local.prefixo_upper
 # }
 
-# output "label_ambiente" {
-#   description = "Label legível do ambiente"
-#   value       = local.ambiente_label
-# }
-
-# ─────────────────────────────────────────────────────────────────────────────
-# EXPERIMENTO 5 — output condicional do bucket de auditoria
-# Descomente após descomentar o recurso do Experimento 5 no main.tf.
-# ─────────────────────────────────────────────────────────────────────────────
-# output "bucket_auditoria" {
-#   description = "Nome do bucket de auditoria (só existe em prod)"
-#   value       = var.environment == "prod" ? aws_s3_bucket.auditoria[0].bucket : "bucket de auditoria só existe em prod"
-# }
+output "label_ambiente" {
+  description = "Label legível do ambiente"
+  value       = local.ambiente_label
+}

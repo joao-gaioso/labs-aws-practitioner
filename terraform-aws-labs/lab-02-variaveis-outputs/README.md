@@ -222,53 +222,6 @@ terraform apply
 
 ---
 
-### Experimento 5 — Recurso condicional com `count` (médio)
-
-**Objetivo:** entender como criar um recurso que só existe em determinado ambiente.
-
-**O que fazer:**
-
-Abra o `main.tf` e descomente o bloco do Experimento 5 (bucket `auditoria` com `count`).
-
-Depois abra o `outputs.tf` e descomente o output do Experimento 5.
-
-Aplique com ambiente `dev`:
-
-```bash
-# No terraform.tfvars: environment = "dev"
-terraform apply
-
-terraform output bucket_auditoria
-# Deve retornar: "bucket de auditoria só existe em prod"
-```
-
-Agora mude para produção no `terraform.tfvars`:
-
-```hcl
-environment = "prod"
-```
-
-Aplique novamente:
-
-```bash
-terraform plan
-# Observe: 1 recurso NOVO será criado (o bucket de auditoria)
-
-terraform apply
-terraform output bucket_auditoria
-# Deve retornar o nome real do bucket
-```
-
-Verifique no console AWS: você deve ter 4 buckets em `prod` e 3 em `dev`.
-
-**O que você usou:**
-- `count = condição ? 1 : 0` — cria o recurso (1) ou não cria (0) dependendo da condição
-- `recurso[0]` — quando `count` é usado, o recurso vira uma lista; `[0]` acessa o primeiro item
-
-> ⚠️ Lembre de voltar para `environment = "dev"` e rodar `terraform apply` antes de continuar.
-
----
-
 ## 💡 Conceitos deste lab
 
 **`variable`** — entrada parametrizável com `default`, `type` e `validation`.
@@ -276,8 +229,6 @@ Verifique no console AWS: você deve ter 4 buckets em `prod` e 3 em `dev`.
 **`locals`** — valores calculados internamente. Centralize lógica de nomenclatura aqui.
 
 **`for_each`** — cria múltiplos recursos a partir de uma lista. Cada instância identificada por `each.key`.
-
-**`count`** — cria 0 ou N instâncias de um recurso. Útil para recursos condicionais.
 
 **`data source`** — lê informações existentes na AWS sem criar nada.
 
@@ -376,7 +327,6 @@ Abra o console AWS → S3 → seu bucket de estado → `lab-02/terraform.tfstate
 - [ ] `terraform plan` mostra `No changes` (estado remoto está sincronizado)
 - [ ] O arquivo `lab-02/terraform.tfstate` aparece no bucket S3 no console
 - [ ] O bucket de estado tem versionamento ativado
-- [ ] A tabela DynamoDB `terraform-state-lock` existe na conta
 
 ---
 

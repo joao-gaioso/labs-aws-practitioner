@@ -49,30 +49,3 @@ resource "aws_s3_bucket_public_access_block" "buckets" {
 #     status = var.versioning_enabled ? "Enabled" : "Suspended"
 #   }
 # }
-
-# ─────────────────────────────────────────────────────────────────────────────
-# EXPERIMENTO 5 — Bucket exclusivo para o ambiente de produção
-# Descomente o bloco abaixo após ler o Experimento 5 no README.
-# O count = 0 ou 1 é uma forma de criar um recurso condicionalmente.
-# ─────────────────────────────────────────────────────────────────────────────
-# resource "aws_s3_bucket" "auditoria" {
-#   count = var.environment == "prod" ? 1 : 0
-
-#   bucket = "${local.prefixo}-auditoria-${data.aws_caller_identity.atual.account_id}"
-
-#   tags = merge(local.tags_comuns, {
-#     Name   = "${local.prefixo}-auditoria"
-#     Funcao = "auditoria"
-#   })
-# }
-
-# resource "aws_s3_bucket_public_access_block" "auditoria" {
-#   count = var.environment == "prod" ? 1 : 0
-
-#   bucket = aws_s3_bucket.auditoria[0].id
-
-#   block_public_acls       = true
-#   block_public_policy     = true
-#   ignore_public_acls      = true
-#   restrict_public_buckets = true
-# }
