@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 06 — Route 53: Failover com Health Check</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg2: #161b22;
+      --bg3: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text2: #8b949e;
+      --accent: #58a6ff;
+      --accent2: #3fb950;
+      --warning: #d29922;
+      --danger: #f85149;
+      --purple: #bc8cff;
+      --orange: #ffa657;
+      --pink: #f778ba;
+      --pink2: #ff4da6;
+      --card-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #0d1117 0%, #1a2332 50%, #0d2137 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 60px 24px 48px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(247,120,186,0.10) 0%, rgba(88,166,255,0.06) 50%, transparent 70%);
+      pointer-events: none;
+    }
+    .badge {
+      display: inline-block;
+      background: rgba(247,120,186,0.12);
+      border: 1px solid rgba(247,120,186,0.4);
+      color: var(--pink);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+      animation: fadeInDown 0.6s ease both;
+    }
+    header h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.5px;
+      animation: fadeInDown 0.7s ease 0.1s both;
+    }
+    header h1 span { color: var(--pink); }
+    .header-sub {
+      color: var(--text2);
+      margin-top: 12px;
+      font-size: 1rem;
+      animation: fadeInDown 0.7s ease 0.2s both;
+    }
+    .header-tags {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 24px;
+      animation: fadeInDown 0.7s ease 0.3s both;
+    }
+    .tag {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      font-size: 12px;
+      padding: 3px 12px;
+      border-radius: 20px;
+    }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 960px; margin: 0 auto; padding: 48px 24px 80px; }
+
+    /* ── SECTIONS ── */
+    section {
+      margin-bottom: 56px;
+      animation: fadeInUp 0.5s ease both;
+    }
+    section:nth-child(1) { animation-delay: 0.1s; }
+    section:nth-child(2) { animation-delay: 0.15s; }
+    section:nth-child(3) { animation-delay: 0.2s; }
+    section:nth-child(4) { animation-delay: 0.25s; }
+    section:nth-child(5) { animation-delay: 0.3s; }
+    section:nth-child(6) { animation-delay: 0.35s; }
+    section:nth-child(7) { animation-delay: 0.4s; }
+    section:nth-child(8) { animation-delay: 0.45s; }
+
+    h2 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2 .icon { font-size: 1.3rem; }
+    h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--pink);
+      margin: 24px 0 10px;
+    }
+    p { color: var(--text2); margin-bottom: 14px; }
+    p strong, li strong { color: var(--text); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: var(--card-shadow);
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .card:hover { border-color: rgba(247,120,186,0.45); transform: translateY(-2px); }
+
+    /* ── ARCHITECTURE DIAGRAM ── */
+    .arch-diagram {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      overflow-x: auto;
+    }
+    .arch-visual {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      min-width: 560px;
+    }
+    .arch-client {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 24px;
+      font-size: 13px;
+      color: var(--text2);
+      font-weight: 600;
+    }
+    .arch-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: var(--text2);
+      font-size: 11px;
+      gap: 2px;
+      margin: 4px 0;
+    }
+    .arch-arrow .line {
+      width: 2px;
+      height: 28px;
+      background: linear-gradient(to bottom, var(--pink), var(--border));
+    }
+    .arch-arrow .label { color: var(--pink); font-size: 11px; }
+    .arch-r53 {
+      background: linear-gradient(135deg, #1a0d1f, #1a0d18);
+      border: 1px solid rgba(247,120,186,0.35);
+      border-radius: 12px;
+      padding: 20px 32px;
+      text-align: center;
+      width: 100%;
+      max-width: 520px;
+    }
+    .arch-r53-title {
+      color: var(--pink);
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 16px;
+      letter-spacing: 1px;
+    }
+    .arch-records {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+    .arch-record {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 12px;
+      text-align: center;
+      flex: 1;
+    }
+    .arch-record.primary { border-color: rgba(63,185,80,0.5); }
+    .arch-record.secondary { border-color: rgba(210,153,34,0.4); }
+    .arch-record .rec-label { font-weight: 700; font-size: 11px; letter-spacing: 1px; margin-bottom: 4px; }
+    .arch-record.primary .rec-label { color: var(--accent2); }
+    .arch-record.secondary .rec-label { color: var(--warning); }
+    .arch-hc {
+      background: rgba(247,120,186,0.08);
+      border: 1px dashed rgba(247,120,186,0.4);
+      border-radius: 8px;
+      padding: 8px 20px;
+      font-size: 12px;
+      color: var(--pink);
+      display: inline-block;
+    }
+    .arch-servers {
+      display: flex;
+      gap: 16px;
+      width: 100%;
+      max-width: 520px;
+      margin-top: 0;
+    }
+    .arch-server {
+      flex: 1;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+      font-size: 12px;
+    }
+    .arch-server.primary { border-color: rgba(63,185,80,0.4); }
+    .arch-server.secondary { border-color: rgba(210,153,34,0.3); }
+    .arch-server .srv-title { font-weight: 700; margin-bottom: 4px; color: var(--text); }
+    .arch-server .srv-detail { color: var(--text2); font-size: 11px; }
+
+    /* ── FAILOVER FLOW ── */
+    .flow-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .flow-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      transition: border-color 0.2s;
+    }
+    .flow-item:hover { border-color: rgba(88,166,255,0.3); }
+    .flow-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .flow-dot.green { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+    .flow-dot.red { background: var(--danger); box-shadow: 0 0 8px var(--danger); animation: pulse 1.5s infinite; }
+    .flow-dot.blue { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .flow-item .flow-label { font-size: 12px; font-weight: 700; color: var(--text2); min-width: 100px; }
+    .flow-item .flow-desc { font-size: 13px; color: var(--text); }
+
+    /* ── FILE TREE ── */
+    .file-tree {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+    }
+    .file-tree .ft-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; color: var(--text2); }
+    .file-tree .ft-row .ft-name { color: var(--text); }
+    .file-tree .ft-row .ft-desc { color: var(--text2); font-size: 12px; }
+    .file-tree .ft-row .ft-icon { font-size: 14px; }
+
+    /* ── TABLE ── */
+    .styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .styled-table th {
+      background: var(--bg3);
+      color: var(--text2);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .styled-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text2);
+      background: var(--bg2);
+    }
+    .styled-table tr:last-child td { border-bottom: none; }
+    .styled-table td:first-child { color: var(--purple); font-family: monospace; }
+    .styled-table td code { color: var(--purple); font-family: monospace; }
+
+    /* ── CODE BLOCKS ── */
+    .code-block {
+      background: #010409;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 14px 0;
+    }
+    .code-header {
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      padding: 7px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .code-lang {
+      font-size: 11px;
+      color: var(--text2);
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+    .copy-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text2);
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .copy-btn:hover { background: var(--bg2); color: var(--pink); border-color: var(--pink); }
+    .code-block pre {
+      padding: 16px 18px;
+      overflow-x: auto;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #e6edf3;
+    }
+    .code-block pre .cm { color: #8b949e; } /* comment */
+    .code-block pre .kw { color: var(--purple); } /* keyword */
+    .code-block pre .st { color: #a5d6ff; } /* string */
+    .code-block pre .fn { color: var(--accent2); } /* function */
+    .code-block pre .va { color: var(--orange); } /* variable */
+
+    /* ── CALLOUTS ── */
+    .callout {
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin: 14px 0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 13.5px;
+    }
+    .callout.info { background: rgba(88,166,255,0.08); border: 1px solid rgba(88,166,255,0.25); }
+    .callout.warning { background: rgba(210,153,34,0.08); border: 1px solid rgba(210,153,34,0.3); }
+    .callout.tip { background: rgba(63,185,80,0.08); border: 1px solid rgba(63,185,80,0.25); }
+    .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .callout p { margin: 0; color: var(--text); }
+
+    /* ── STEPS ── */
+    .steps { display: flex; flex-direction: column; gap: 16px; }
+    .step {
+      display: flex;
+      gap: 16px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .step:hover { border-color: rgba(247,120,186,0.4); transform: translateX(4px); }
+    .step-num {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--pink), var(--purple));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px; color: #fff;
+      flex-shrink: 0;
+    }
+    .step-body h3 { margin: 0 0 8px; color: var(--text); font-size: 14px; }
+    .step-body p { margin: 0 0 10px; font-size: 13px; }
+
+    /* ── CONCEPTS ── */
+    .concepts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .concept-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .concept-card:hover { border-color: rgba(247,120,186,0.5); transform: translateY(-3px); box-shadow: 0 4px 20px rgba(247,120,186,0.12); }
+    .concept-card .cc-title {
+      font-family: monospace;
+      color: var(--pink);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .concept-card p { font-size: 13px; margin: 0; }
+
+    /* ── DEPLOY STEPS ── */
+    .deploy-cmds {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .cmd-chip {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-family: monospace;
+      font-size: 13px;
+      color: var(--accent2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: border-color 0.2s;
+    }
+    .cmd-chip:hover { border-color: var(--pink); }
+    .cmd-chip .prompt { color: var(--text2); }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ── DIVIDER ── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+    /* ── INLINE CODE ── */
+    code {
+      background: rgba(247,120,186,0.10);
+      border: 1px solid rgba(247,120,186,0.2);
+      color: var(--pink);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: monospace;
+      font-size: 0.88em;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 32px 24px;
+      border-top: 1px solid var(--border);
+      color: var(--text2);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="badge">AWS Labs · Lab 06</div>
+  <h1>Route 53: <span>Failover</span> com Health Check</h1>
+  <p class="header-sub">Alta disponibilidade com DNS inteligente e detecção automática de falhas</p>
+  <div class="header-tags">
+    <span class="tag">🌐 Route 53</span>
+    <span class="tag">💻 EC2</span>
+    <span class="tag">🏗️ Terraform</span>
+    <span class="tag">❤️ Health Check</span>
+    <span class="tag">🔁 Failover DNS</span>
+    <span class="tag">☁️ us-east-1</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- OBJETIVO -->
+  <section>
+    <h2><span class="icon">🎯</span> Objetivo</h2>
+    <div class="card">
+      <p>Entender na prática como o <strong>Route 53 detecta falhas</strong> e redireciona o tráfego automaticamente para um servidor de backup — sem nenhuma intervenção manual.</p>
+      <p>A LojaFácil cresceu e agora precisa de alta disponibilidade. Se o servidor principal cair, o site não pode ficar fora do ar esperando alguém perceber o problema e agir. A solução é um <strong>failover automático</strong>: o Route 53 monitora o servidor principal e, ao detectar falha, passa a direcionar os clientes para o servidor de backup automaticamente.</p>
+    </div>
+  </section>
+
+  <!-- ARQUITETURA -->
+  <section>
+    <h2><span class="icon">🏗️</span> Arquitetura</h2>
+    <div class="arch-diagram">
+      <div class="arch-visual">
+        <div class="arch-client">👤 Cliente</div>
+        <div class="arch-arrow">
+          <div class="line"></div>
+          <span class="label">resolve app.lojafacil-lab.com</span>
+          <div class="line"></div>
+        </div>
+        <div class="arch-r53">
+          <div class="arch-r53-title">⬡ ROUTE 53</div>
+          <div class="arch-records">
+            <div class="arch-record primary">
+              <div class="rec-label">PRIMARY</div>
+              <div style="color:#8b949e;font-size:11px">Record A · ativo</div>
+              <div style="margin-top:6px;font-size:11px;color:#3fb950">✅ health check vinculado</div>
+            </div>
+            <div class="arch-record secondary">
+              <div class="rec-label">SECONDARY</div>
+              <div style="color:#8b949e;font-size:11px">Record A · standby</div>
+              <div style="margin-top:6px;font-size:11px;color:#d29922">⚠️ ativa quando PRIMARY falha</div>
+            </div>
+          </div>
+          <div class="arch-hc">❤️ Health Check · GET /health · a cada 30s</div>
+        </div>
+        <div class="arch-arrow">
+          <div class="line"></div>
+        </div>
+        <div class="arch-servers">
+          <div class="arch-server primary">
+            <div class="srv-title">🖥️ EC2 Primária</div>
+            <div class="srv-detail">AZ: us-east-1a</div>
+            <div class="srv-detail">nginx + /health</div>
+          </div>
+          <div class="arch-server secondary">
+            <div class="srv-title">🖥️ EC2 Secundária</div>
+            <div class="srv-detail">AZ: us-east-1b</div>
+            <div class="srv-detail">nginx + /health</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Fluxo de failover</h3>
+    <div class="flow-grid">
+      <div class="flow-item">
+        <div class="flow-dot green"></div>
+        <span class="flow-label">NORMAL</span>
+        <span class="flow-desc">cliente → DNS resolve <strong>PRIMARY</strong> → EC2 Primária ✅</span>
+      </div>
+      <div class="flow-item">
+        <div class="flow-dot red"></div>
+        <span class="flow-label">FALHA</span>
+        <span class="flow-desc">Health check detecta <strong>3 falhas consecutivas</strong> → ativa SECONDARY ⚠️</span>
+      </div>
+      <div class="flow-item">
+        <div class="flow-dot blue"></div>
+        <span class="flow-label">RECUPERAÇÃO</span>
+        <span class="flow-desc">Health check volta a passar → DNS resolve <strong>PRIMARY</strong> novamente ✅</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- DIFERENÇA LAB 05 -->
+  <section>
+    <h2><span class="icon">⚠️</span> Diferença em relação ao Lab 05</h2>
+    <p>No lab 05 usamos uma <strong>Hosted Zone privada</strong> — o DNS só resolvia dentro da VPC. Neste lab usamos uma <strong>Hosted Zone pública</strong> porque os health checks do Route 53 são executados por servidores AWS espalhados pelo mundo, fora da sua VPC.</p>
+    <table class="styled-table">
+      <thead>
+        <tr><th></th><th>Lab 05</th><th>Lab 06</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Tipo de zona</td><td>Privada</td><td>Pública</td></tr>
+        <tr><td>Resolução DNS</td><td>Só dentro da VPC</td><td>Na internet (se domínio registrado)</td></tr>
+        <tr><td>Health checks</td><td>Não suportado</td><td>Suportado ✅</td></tr>
+        <tr><td>Domínio necessário</td><td>Não</td><td>Para resolver na internet (sim)</td></tr>
+      </tbody>
+    </table>
+    <div class="callout info">
+      <span class="callout-icon">💡</span>
+      <p>Para este lab, a zona pública é criada no Route 53 mas o domínio <code>lojafacil-lab.com</code> não está registrado — o que importa é observar o comportamento do health check e do failover no <strong>console do Route 53</strong>.</p>
+    </div>
+  </section>
+
+  <!-- ESTRUTURA -->
+  <section>
+    <h2><span class="icon">📁</span> Estrutura dos arquivos</h2>
+    <div class="file-tree">
+      <div class="ft-row"><span class="ft-icon">📁</span><span class="ft-name">lab-06-route53-failover/</span></div>
+      <div class="ft-row" style="padding-left:20px"><span class="ft-icon">📄</span><span class="ft-name">versions.tf</span><span style="margin-left:8px">→</span><span class="ft-desc">&nbsp;versões fixadas</span></div>
+      <div class="ft-row" style="padding-left:20px"><span class="ft-icon">📄</span><span class="ft-name">provider.tf</span><span style="margin-left:8px">→</span><span class="ft-desc">&nbsp;provider AWS</span></div>
+      <div class="ft-row" style="padding-left:20px"><span class="ft-icon">📄</span><span class="ft-name">variables.tf</span><span style="margin-left:8px">→</span><span class="ft-desc">&nbsp;variáveis (thresholds do health check)</span></div>
+      <div class="ft-row" style="padding-left:20px"><span class="ft-icon">📄</span><span class="ft-name">main.tf</span><span style="margin-left:8px">→</span><span class="ft-desc">&nbsp;2 EC2, SG, health check, hosted zone, registros failover</span></div>
+      <div class="ft-row" style="padding-left:20px"><span class="ft-icon">📄</span><span class="ft-name">outputs.tf</span><span style="margin-left:8px">→</span><span class="ft-desc">&nbsp;IPs, URLs de health check, comandos SSH</span></div>
+    </div>
+  </section>
+
+  <!-- DEPLOY -->
+  <section>
+    <h2><span class="icon">🚀</span> Deploy</h2>
+    <div class="deploy-cmds">
+      <div class="cmd-chip"><span class="prompt">$</span> terraform init</div>
+      <div class="cmd-chip"><span class="prompt">$</span> terraform plan</div>
+      <div class="cmd-chip"><span class="prompt">$</span> terraform apply</div>
+    </div>
+    <div class="callout warning">
+      <span class="callout-icon">⏳</span>
+      <p>Aguarde <strong>~2 minutos</strong> após o apply para o nginx inicializar nas EC2 antes de começar os testes.</p>
+    </div>
+    <p>Anote os outputs — você vai precisar deles:</p>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+      <pre>terraform output ip_publico_primaria
+terraform output ip_publico_secundaria
+terraform output url_health_primaria
+terraform output health_check_id</pre>
+    </div>
+  </section>
+
+  <!-- VERIFICAÇÃO -->
+  <section>
+    <h2><span class="icon">✅</span> Verificação inicial</h2>
+    <h3>1. Confirme que os dois servidores respondem</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+      <pre><span class="cm"># Deve retornar "SERVIDOR PRIMÁRIO" e código 200</span>
+curl http://$(terraform output -raw ip_publico_primaria)
+
+<span class="cm"># Deve retornar "SERVIDOR SECUNDÁRIO (FAILOVER)" e código 200</span>
+curl http://$(terraform output -raw ip_publico_secundaria)</pre>
+    </div>
+
+    <h3>2. Confirme que o endpoint de health check responde</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+      <pre><span class="cm"># Ambos devem retornar "OK"</span>
+curl http://$(terraform output -raw ip_publico_primaria)/health
+curl http://$(terraform output -raw ip_publico_secundaria)/health</pre>
+    </div>
+
+    <h3>3. Observe o health check no console</h3>
+    <div class="callout tip">
+      <span class="callout-icon">🔗</span>
+      <p>Acesse <a href="https://console.aws.amazon.com/route53/healthchecks/home#/" target="_blank">console.aws.amazon.com/route53/healthchecks</a> e aguarde o status <strong>Healthy</strong> (1-2 minutos).</p>
+    </div>
+    <div class="callout info">
+      <span class="callout-icon">🗺️</span>
+      <p>Em <strong>Route 53 → Hosted Zones → lojafacil-lab.com</strong> você verá dois registros <code>app.lojafacil-lab.com</code> tipo A: um <code>PRIMARY</code> e um <code>SECONDARY</code>.</p>
+    </div>
+  </section>
+
+  <!-- SIMULANDO FAILOVER -->
+  <section>
+    <h2><span class="icon">🧪</span> Simulando o Failover</h2>
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Derrube o nginx na EC2 primária</h3>
+          <p>Conecte via SSH e pare o nginx:</p>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+            <pre>ssh -i lab-failover-key.pem ec2-user@$(terraform output -raw ip_publico_primaria)
+
+<span class="cm"># Dentro da EC2 primária:</span>
+sudo systemctl stop nginx
+
+<span class="cm"># Confirme — deve retornar "connection refused"</span>
+curl http://localhost/health</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Observe o health check mudar para Unhealthy</h3>
+          <p>O Route 53 tenta <code>GET /health</code> a cada <strong>30 segundos</strong>. Após <strong>3 falhas consecutivas</strong>, o status muda para Unhealthy.</p>
+          <div class="callout warning">
+            <span class="callout-icon">⏱️</span>
+            <p>Tempo estimado para detectar a falha: <strong>30s × 3 = ~90 segundos</strong></p>
+          </div>
+          <p>Acompanhe em: <a href="https://console.aws.amazon.com/route53/healthchecks/home#/" target="_blank">console.aws.amazon.com/route53/healthchecks</a></p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Confirme que o failover aconteceu</h3>
+          <p>Pegue um nameserver da zona e consulte o DNS diretamente:</p>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">bash · Linux/macOS/WSL/Git Bash</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+            <pre><span class="cm"># Extrai o primeiro nameserver (sem dependência de python3)</span>
+NS=$(terraform output -json nameservers | tr -d '[]"' | cut -d',' -f1)
+nslookup app.lojafacil-lab.com $NS</pre>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">powershell · Windows</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+            <pre><span class="cm"># Extrai o primeiro nameserver</span>
+$ns = (terraform output -json nameservers | ConvertFrom-Json)[0]
+
+<span class="cm"># Consulta usando nslookup (nativo do Windows)</span>
+nslookup app.lojafacil-lab.com $ns
+
+<span class="cm"># Ou com Resolve-DnsName (output mais detalhado)</span>
+Resolve-DnsName -Name app.lojafacil-lab.com -Server $ns</pre>
+          </div>
+          <div class="callout tip">
+            <span class="callout-icon">✅</span>
+            <p>O IP retornado deve ser o da <strong>SECUNDÁRIA</strong>. Confirme com <code>terraform output ip_publico_secundaria</code>.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Simule a recuperação</h3>
+          <p>Volte para a EC2 primária e reinicie o nginx:</p>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+            <pre><span class="cm"># Dentro da EC2 primária:</span>
+sudo systemctl start nginx
+curl http://localhost/health  <span class="cm"># deve retornar "OK"</span></pre>
+          </div>
+          <p>Após <strong>2 checks consecutivos OK</strong>, o Route 53 volta a usar o registro PRIMARY.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- PARÂMETROS -->
+  <section>
+    <h2><span class="icon">🔍</span> Parâmetros do Health Check</h2>
+    <p>Os valores estão em <code>variables.tf</code> — altere e aplique para ver o efeito:</p>
+    <table class="styled-table">
+      <thead>
+        <tr><th>Variável</th><th>Padrão</th><th>O que controla</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>health_check_intervalo</code></td><td>30s</td><td>Com que frequência o Route 53 testa o endpoint</td></tr>
+        <tr><td><code>health_check_threshold_falha</code></td><td>3</td><td>Falhas consecutivas para marcar como Unhealthy</td></tr>
+        <tr><td><code>health_check_threshold_saudavel</code></td><td>2</td><td>Sucessos consecutivos para voltar a Healthy</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Experimento — acelerar o failover</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">hcl · variables.tf</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+      <pre><span class="va">health_check_intervalo</span>          = <span class="st">10</span>  <span class="cm"># mínimo permitido pelo Route 53</span>
+<span class="va">health_check_threshold_falha</span>    = <span class="st">2</span>   <span class="cm"># falha após 2 checks (20 segundos)</span>
+<span class="va">health_check_threshold_saudavel</span> = <span class="st">1</span>   <span class="cm"># recupera após 1 check (10 segundos)</span></pre>
+    </div>
+    <div class="callout warning">
+      <span class="callout-icon">💰</span>
+      <p>O intervalo de <strong>10 segundos</strong> gera mais custo que 30 segundos — cada health check tem um preço por check realizado. Em produção, escolha o intervalo com base no SLA do serviço.</p>
+    </div>
+  </section>
+
+  <!-- CONCEITOS -->
+  <section>
+    <h2><span class="icon">💡</span> Conceitos deste lab</h2>
+    <div class="concepts-grid">
+      <div class="concept-card">
+        <div class="cc-title">Failover routing policy</div>
+        <p>Define um registro PRIMARY e um SECONDARY. O SECONDARY só entra em ação quando o PRIMARY está Unhealthy.</p>
+      </div>
+      <div class="concept-card">
+        <div class="cc-title">Health Check</div>
+        <p>Sonda periódica que o Route 53 envia para verificar se um endpoint está respondendo. Suporta HTTP, HTTPS e TCP.</p>
+      </div>
+      <div class="concept-card">
+        <div class="cc-title">set_identifier</div>
+        <p>Campo obrigatório quando há múltiplos registros com o mesmo nome e tipo. Diferencia os registros no Terraform e no Route 53.</p>
+      </div>
+      <div class="concept-card">
+        <div class="cc-title">health_check_id</div>
+        <p>Vincula um registro DNS a um health check. Sem isso, o Route 53 não sabe que deve remover o registro quando o servidor falhar.</p>
+      </div>
+      <div class="concept-card">
+        <div class="cc-title">TTL baixo no failover</div>
+        <p>TTL de 60s garante que clientes que cachearam o IP antigo sejam atualizados rapidamente após o failover.</p>
+      </div>
+      <div class="concept-card">
+        <div class="cc-title">AZs diferentes</div>
+        <p>As duas EC2 ficam em Availability Zones diferentes propositalmente — se uma AZ inteira cair, o backup em outra AZ continua disponível.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- POR QUE ZONA PÚBLICA -->
+  <section>
+    <h2><span class="icon">❓</span> Por que não usar zona privada aqui?</h2>
+    <div class="card">
+      <p>Os health checks do Route 53 são realizados por servidores AWS em múltiplas regiões do mundo. Esses servidores estão <strong>fora da sua VPC</strong> e precisam alcançar o endpoint pela internet pública. Uma zona privada só resolve nomes dentro da VPC — os health checkers não têm acesso a ela.</p>
+    </div>
+  </section>
+
+  <!-- DESTROY -->
+  <section>
+    <h2><span class="icon">🧹</span> Destruindo os recursos</h2>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copiar</button></div>
+      <pre>terraform destroy</pre>
+    </div>
+    <div class="callout warning">
+      <span class="callout-icon">⚠️</span>
+      <p>O arquivo <code>.pem</code> gerado localmente <strong>não é removido</strong> pelo <code>destroy</code>. Delete manualmente se necessário.</p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  AWS Labs · Lab 06 — Route 53 Failover com Health Check · Terraform
+</footer>
+
+<script>
+  function copyCode(btn) {
+    const pre = btn.closest('.code-block').querySelector('pre');
+    const text = pre.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'Copiado!';
+      btn.style.color = '#3fb950';
+      btn.style.borderColor = '#3fb950';
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }, 1800);
+    });
+  }
+
+  // Intersection Observer para animar seções ao entrar na viewport
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.opacity = '1';
+        e.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: 0.08 });
+
+  document.querySelectorAll('section').forEach(s => {
+    s.style.opacity = '0';
+    s.style.transform = 'translateY(24px)';
+    s.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    observer.observe(s);
+  });
+</script>
+</body>
+</html>
