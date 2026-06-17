@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 03 — EC2 Simples</title>
+  <style>
+    :root {
+      --bg:     #0a0a0f;
+      --bg2:    #12121a;
+      --bg3:    #1c1c28;
+      --border: #2a2a3d;
+      --text:   #eaeaf5;
+      --text2:  #8888aa;
+      --pink:   #f778ba;
+      --cyan:   #38d9f5;
+      --green:  #3bffa0;
+      --purple: #b57bff;
+      --yellow: #ffd166;
+      --orange: #ff8c42;
+      --card-shadow: 0 6px 30px rgba(0,0,0,0.5);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.75;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: relative;
+      overflow: hidden;
+      padding: 72px 24px 56px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    header::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 65% 50% at 25% 0%,  rgba(59,255,160,0.11) 0%, transparent 65%),
+        radial-gradient(ellipse 55% 45% at 78% 10%, rgba(181,123,255,0.10) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 50% 100%,rgba(247,120,186,0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .lab-badge {
+      position: relative; z-index: 1;
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(59,255,160,0.10);
+      border: 1px solid rgba(59,255,160,0.35);
+      color: var(--green);
+      font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+      padding: 5px 16px; border-radius: 20px; margin-bottom: 22px;
+      animation: fadeDown 0.6s ease both;
+    }
+    .lab-badge::before { content: '◆'; font-size: 8px; }
+    header h1 {
+      position: relative; z-index: 1;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800; letter-spacing: -1px; color: #fff; line-height: 1.15;
+      animation: fadeDown 0.65s ease 0.1s both;
+    }
+    header h1 .h1 { color: var(--green); }
+    header h1 .h2 { color: var(--purple); }
+    .header-desc {
+      position: relative; z-index: 1;
+      color: var(--text2); margin-top: 14px; font-size: 1rem;
+      animation: fadeDown 0.65s ease 0.2s both;
+    }
+    .header-chips {
+      position: relative; z-index: 1;
+      display: flex; justify-content: center; flex-wrap: wrap; gap: 8px;
+      margin-top: 26px; animation: fadeDown 0.65s ease 0.3s both;
+    }
+    .chip {
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text2); font-size: 12px; padding: 4px 13px; border-radius: 20px;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .chip:hover { border-color: var(--green); color: var(--green); }
+
+    /* ── LAYOUT ── */
+    main { max-width: 980px; margin: 0 auto; padding: 56px 24px 96px; position: relative; z-index: 1; }
+    section { margin-bottom: 64px; animation: fadeUp 0.5s ease both; opacity: 0; }
+
+    /* ── HEADINGS ── */
+    h2 {
+      font-size: 1.3rem; font-weight: 700; color: #fff;
+      margin-bottom: 22px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    h2 .sec-icon { font-size: 1.25rem; }
+    h3 {
+      font-size: 0.95rem; font-weight: 700; color: var(--cyan);
+      margin: 26px 0 10px; display: flex; align-items: center; gap: 7px;
+    }
+    h3::before { content: '//'; color: var(--border); font-size: 12px; }
+    p { color: var(--text2); margin-bottom: 14px; }
+    p strong { color: var(--text); }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 14px; padding: 24px; box-shadow: var(--card-shadow);
+      transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+    }
+    .card:hover { border-color: rgba(59,255,160,0.35); transform: translateY(-3px); box-shadow: 0 8px 40px rgba(59,255,160,0.07); }
+
+    /* ── WHAT WILL BE CREATED ── */
+    .creates { display: flex; flex-direction: column; gap: 10px; }
+    .create-item {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 18px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .create-item:hover { border-color: rgba(59,255,160,0.35); transform: translateX(4px); }
+    .create-icon { font-size: 20px; flex-shrink: 0; }
+    .create-body .ct { font-weight: 700; color: var(--text); font-size: 14px; }
+    .create-body .cd { color: var(--text2); font-size: 13px; }
+
+    /* ── FILE TREE ── */
+    .ftree {
+      background: #08080e; border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px 22px;
+      font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px;
+    }
+    .ftree-row { display: flex; align-items: baseline; gap: 6px; padding: 4px 0; }
+    .ftree-row .fn { color: var(--text); }
+    .ftree-row .fd { color: var(--text2); font-size: 12px; }
+    .ftree-row .fa { color: var(--pink); font-size: 12px; font-weight: 700; }
+
+    /* ── CODE BLOCKS ── */
+    .cblock { background: #06060c; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 14px 0; }
+    .cblock-head {
+      background: var(--bg3); border-bottom: 1px solid var(--border);
+      padding: 7px 14px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .cblock-lang { font-size: 10.5px; color: var(--text2); font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; }
+    .cbtn {
+      background: none; border: 1px solid var(--border); color: var(--text2);
+      font-size: 11px; padding: 3px 10px; border-radius: 6px; cursor: pointer;
+      transition: all 0.2s; font-family: inherit;
+    }
+    .cbtn:hover { border-color: var(--pink); color: var(--pink); }
+    .cblock pre {
+      padding: 16px 18px; overflow-x: auto;
+      font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px;
+      line-height: 1.65; color: #d0d0e8;
+    }
+    .cm  { color: #555577; }
+    .kw  { color: var(--purple); }
+    .st  { color: #a8d8ff; }
+    .fn  { color: var(--green); }
+    .va  { color: var(--orange); }
+    .hl  { color: var(--pink); font-weight: 600; }
+
+    /* ── CALLOUTS ── */
+    .callout { border-radius: 10px; padding: 13px 18px; margin: 14px 0; display: flex; gap: 11px; align-items: flex-start; font-size: 13.5px; }
+    .callout p { margin: 0; }
+    .co-tip  { background: rgba(59,255,160,0.07);  border: 1px solid rgba(59,255,160,0.25);  }
+    .co-info { background: rgba(56,217,245,0.07);  border: 1px solid rgba(56,217,245,0.25);  }
+    .co-warn { background: rgba(255,209,102,0.07); border: 1px solid rgba(255,209,102,0.25); }
+    .co-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── DEPLOY CHIPS ── */
+    .deploy-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+    .dcmd {
+      background: var(--bg3); border: 1px solid var(--border); border-radius: 9px;
+      padding: 9px 18px; font-family: monospace; font-size: 13px; color: var(--green);
+      display: flex; align-items: center; gap: 8px;
+      transition: border-color 0.2s, box-shadow 0.2s; cursor: default;
+    }
+    .dcmd:hover { border-color: var(--green); box-shadow: 0 0 12px rgba(59,255,160,0.12); }
+    .dcmd .pr { color: var(--text2); }
+
+    /* ── CONCEPTS GRID ── */
+    .concepts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+    .concept-card {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 18px;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    }
+    .concept-card:hover { border-color: rgba(247,120,186,0.45); transform: translateY(-3px); box-shadow: 0 4px 20px rgba(247,120,186,0.10); }
+    .concept-card .cc-title { font-family: monospace; color: var(--pink); font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+    .concept-card p { font-size: 13px; margin: 0; }
+
+    /* ── SECURITY ITEMS ── */
+    .sec-list { display: flex; flex-direction: column; gap: 10px; }
+    .sec-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      background: rgba(59,255,160,0.05); border: 1px solid rgba(59,255,160,0.2);
+      border-radius: 10px; padding: 13px 16px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .sec-item:hover { border-color: rgba(59,255,160,0.45); transform: translateX(4px); }
+    .sec-item .si-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .sec-item .si-text { font-size: 13.5px; color: var(--text); }
+    .sec-item .si-text span { color: var(--text2); display: block; font-size: 12.5px; margin-top: 2px; }
+
+    /* ── INLINE CODE ── */
+    code {
+      background: rgba(247,120,186,0.10); border: 1px solid rgba(247,120,186,0.18);
+      color: var(--pink); border-radius: 5px; padding: 1px 7px;
+      font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.87em;
+    }
+
+    /* ── GLOW DIVIDER ── */
+    .gdiv {
+      border: none; height: 1px;
+      background: linear-gradient(to right, transparent, var(--green), var(--cyan), transparent);
+      margin: 0 0 48px; opacity: 0.25;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center; padding: 28px 24px;
+      border-top: 1px solid var(--border); color: var(--text2); font-size: 12px;
+      position: relative; z-index: 1;
+    }
+    footer span { color: var(--pink); }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeDown { from { opacity: 0; transform: translateY(-18px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeUp   { from { opacity: 0; transform: translateY(22px);  } to { opacity: 1; transform: translateY(0); } }
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 14px rgba(255,140,66,0.25); }
+      50%       { box-shadow: 0 0 28px rgba(247,120,186,0.3); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="lab-badge">AWS Labs · Lab 03</div>
+  <h1><span class="h1">EC2</span> <span class="h2">Simples</span></h1>
+  <p class="header-desc">AMI dinâmica · Security Group · Par de chaves · IMDSv2 · Free Tier</p>
+  <div class="header-chips">
+    <span class="chip">💻 EC2</span>
+    <span class="chip">🏗️ Terraform</span>
+    <span class="chip">🔑 SSH Key Pair</span>
+    <span class="chip">🛡️ IMDSv2</span>
+    <span class="chip">🔒 Security Group</span>
+    <span class="chip">☁️ Amazon Linux 2023</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- OBJETIVO -->
+  <section>
+    <h2><span class="sec-icon">🎯</span> Objetivo</h2>
+    <div class="card">
+      <p>Criar uma instância EC2 com Terraform aplicando boas práticas: <strong>AMI dinâmica via data source</strong>, Security Group com regras explícitas, <strong>par de chaves gerado automaticamente</strong> e IMDSv2 habilitado.</p>
+    </div>
+  </section>
+
+  <hr class="gdiv" />
+
+  <!-- ESTRUTURA -->
+  <section>
+    <h2><span class="sec-icon">📁</span> Estrutura dos arquivos</h2>
+    <div class="ftree">
+      <div class="ftree-row"><span>📁</span><span class="fn">lab-03-ec2-simples/</span></div>
+      <div class="ftree-row" style="padding-left:22px"><span>📄</span><span class="fn">versions.tf</span><span>&nbsp;→&nbsp;</span><span class="fd">versões fixadas </span><span class="fa">(inclui providers tls e local)</span></div>
+      <div class="ftree-row" style="padding-left:22px"><span>📄</span><span class="fn">provider.tf</span><span>&nbsp;→&nbsp;</span><span class="fd">provider AWS</span></div>
+      <div class="ftree-row" style="padding-left:22px"><span>📄</span><span class="fn">variables.tf</span><span>&nbsp;→&nbsp;</span><span class="fd">variáveis de entrada</span></div>
+      <div class="ftree-row" style="padding-left:22px"><span>📄</span><span class="fn">main.tf</span><span>&nbsp;→&nbsp;</span><span class="fd">EC2, Security Group, par de chaves, data sources</span></div>
+      <div class="ftree-row" style="padding-left:22px"><span>📄</span><span class="fn">outputs.tf</span><span>&nbsp;→&nbsp;</span><span class="fd">IP público, comando SSH pronto</span></div>
+    </div>
+  </section>
+
+  <hr class="gdiv" />
+
+  <!-- AVISO BACKEND -->
+  <section>
+    <div style="
+      background: linear-gradient(135deg, rgba(255,140,66,0.10), rgba(247,120,186,0.08));
+      border: 2px solid rgba(255,140,66,0.5);
+      border-radius: 16px; padding: 28px 28px 24px;
+      box-shadow: 0 0 32px rgba(255,140,66,0.10);
+      animation: glow 3s ease-in-out infinite;
+    ">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+        <span style="font-size:28px; line-height:1;">⚠️</span>
+        <span style="font-size:1.1rem; font-weight:800; color:var(--orange); letter-spacing:0.3px;">
+          Não esqueça de preencher o <code style="color:var(--orange);background:rgba(255,140,66,0.15);border-color:rgba(255,140,66,0.3);font-size:0.95em;">backend.tf</code>!
+        </span>
+      </div>
+      <p style="color:var(--text); margin-bottom:16px; font-size:14px;">
+        Antes de rodar o <code>terraform init</code>, abra o arquivo <code>backend.tf</code> e substitua <code style="color:var(--pink)">SEU-BUCKET-AQUI</code> pelo nome real do seu bucket S3:
+      </p>
+      <div class="cblock">
+        <div class="cblock-head">
+          <span class="cblock-lang">hcl · backend.tf</span>
+          <button class="cbtn" onclick="cp(this)">Copiar</button>
+        </div>
+        <pre>terraform {
+  backend "s3" {
+    bucket  = <span class="hl">"nome-do-seu-bucket-aqui"</span>  <span class="cm"># ← altere aqui</span>
+    key     = "lab-03-ec2-simples/terraform.tfstate"
+    region  = "us-east-1"
+  }
+}</pre>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
+        <div style="display:flex; align-items:center; gap:10px; font-size:13.5px;">
+          <span style="color:var(--green); font-weight:700;">1.</span>
+          <span style="color:var(--text2);">Edite o <code>backend.tf</code> com o nome real do bucket</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; font-size:13.5px;">
+          <span style="color:var(--green); font-weight:700;">2.</span>
+          <span style="color:var(--text2);">Rode <code>terraform init</code> — ele vai configurar o backend automaticamente</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; font-size:13.5px;">
+          <span style="color:var(--green); font-weight:700;">3.</span>
+          <span style="color:var(--text2);">Confirme com <code>yes</code> quando perguntado sobre migração do state</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="gdiv" />
+
+  <!-- O QUE SERÁ CRIADO -->
+  <section>
+    <h2><span class="sec-icon">🧱</span> O que será criado</h2>
+    <div class="creates">
+      <div class="create-item">
+        <span class="create-icon">🔑</span>
+        <div class="create-body">
+          <div class="ct">Par de chaves SSH</div>
+          <div class="cd">Gerado pelo Terraform e salvo localmente como <code>.pem</code> com permissão <code>0400</code></div>
+        </div>
+      </div>
+      <div class="create-item">
+        <span class="create-icon">🛡️</span>
+        <div class="create-body">
+          <div class="ct">Security Group</div>
+          <div class="cd">Regras explícitas de ingress (SSH) e egress — sem atalhos implícitos</div>
+        </div>
+      </div>
+      <div class="create-item">
+        <span class="create-icon">💻</span>
+        <div class="create-body">
+          <div class="ct">Instância EC2 <code>t2.micro</code></div>
+          <div class="cd">Amazon Linux 2023 via data source — Free Tier elegível · IMDSv2 habilitado</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="gdiv" />
+
+  <!-- EXECUTANDO -->
+  <section>
+    <h2><span class="sec-icon">🚀</span> Executando o lab</h2>
+    <div class="deploy-row">
+      <div class="dcmd"><span class="pr">$</span> terraform init</div>
+      <div class="dcmd"><span class="pr">$</span> terraform plan</div>
+      <div class="dcmd"><span class="pr">$</span> terraform apply</div>
+    </div>
+    <p>Após o apply, o output <code>comando_ssh</code> já mostra o comando pronto para conectar:</p>
+    <div class="cblock">
+      <div class="cblock-head"><span class="cblock-lang">bash</span><button class="cbtn" onclick="cp(this)">Copiar</button></div>
+      <pre>terraform output comando_ssh
+<span class="cm"># ssh -i lab-ec2-key.pem ec2-user@&lt;IP_PUBLICO&gt;</span></pre>
+    </div>
+  </section>
+
+  <hr class="gdiv" />
+
+  <!-- VERIFICANDO -->
+  <section>
+    <h2><span class="sec-icon">🔍</span> Verificando a instância</h2>
+    <div class="cblock">
+      <div class="cblock-head"><span class="cblock-lang">bash</span><button class="cbtn" onclick="cp(this)">Copiar</button></div>
+      <pre><span class="cm"># Ver o IP público</span>
+terraform output ip_publico
+
+<span class="cm"># Ver qual AMI foi usada</span>
+terraform output ami_utilizada
+
+<span class="cm"># Conectar via SSH</span>
+ssh -i lab-ec2-key.pem ec2-user@$(terraform output -raw ip_publico)</pre>
+    </div>
+  </section>
+
+  <hr class="gdiv" />
+
+  <!-- CONCEITOS -->
+  <section>
+    <h2><span class="sec-icon">💡</span> Conceitos deste lab</h2>
+    <div class="concepts-grid">
+      <div class="concept-card">
+        <div class="cc-title">data "aws_ami"</div>
+        <p>Busca a AMI mais recente do Amazon Linux 2023 sem hardcodar o ID. O ID muda por região e versão — data source resolve isso automaticamente.</p>
+      </div>
+      <div class="concept-card">
+        <div class="cc-title">data "aws_vpc"</div>
+        <p>Busca a VPC padrão da conta. Data sources leem recursos existentes sem criar nada novo.</p>
+      </div>
+      <div class="concept-card">
+        <div class="cc-title">Security Group</div>
+        <p>Firewall da EC2. Sempre declare <code>ingress</code> e <code>egress</code> explicitamente. Em produção, restrinja o SSH ao seu IP (<code>SEU_IP/32</code>).</p>
+      </div>
+      <div class="concept-card">
+        <div class="cc-title">tls_private_key</div>
+        <p>Gera um par de chaves RSA dentro do Terraform. Prático para labs; em produção gere fora e importe só a pública.</p>
+      </div>
+      <div class="concept-card">
+        <div class="cc-title">local_sensitive_file</div>
+        <p>Salva a chave privada localmente com permissão <code>0400</code>. O <code>sensitive</code> garante que o conteúdo não apareça nos logs do Terraform.</p>
+      </div>
+      <div class="concept-card">
+        <div class="cc-title">metadata_options</div>
+        <p><code>http_tokens = "required"</code> força IMDSv2, exigindo token de sessão para acessar metadados. Protege contra ataques SSRF.</p>
+      </div>
+      <div class="concept-card">
+        <div class="cc-title">user_data</div>
+        <p>Script executado na primeira inicialização da instância. Útil para instalar pacotes, configurar serviços, etc.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="gdiv" />
+
+  <!-- SEGURANÇA -->
+  <section>
+    <h2><span class="sec-icon">⚠️</span> Boas práticas de segurança aplicadas</h2>
+    <div class="sec-list">
+      <div class="sec-item">
+        <span class="si-icon">🛡️</span>
+        <div class="si-text">IMDSv2 obrigatório
+          <span><code>http_tokens = "required"</code> — protege contra SSRF que tente acessar os metadados da instância</span>
+        </div>
+      </div>
+      <div class="sec-item">
+        <span class="si-icon">🔑</span>
+        <div class="si-text">Chave privada com permissão restrita
+          <span>Salva como <code>0400</code> via <code>local_sensitive_file</code> — apenas o dono pode ler</span>
+        </div>
+      </div>
+      <div class="sec-item">
+        <span class="si-icon">🔒</span>
+        <div class="si-text">Security Group com regras explícitas
+          <span>Ingress e egress declarados explicitamente — sem <code>allow all</code> implícito</span>
+        </div>
+      </div>
+      <div class="sec-item">
+        <span class="si-icon">🔄</span>
+        <div class="si-text">AMI buscada dinamicamente
+          <span>Sem ID hardcoded — sempre usa a versão mais recente e correta para a região</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="gdiv" />
+
+  <!-- DESTROY -->
+  <section>
+    <h2><span class="sec-icon">🧹</span> Destruindo os recursos</h2>
+    <div class="cblock">
+      <div class="cblock-head"><span class="cblock-lang">bash</span><button class="cbtn" onclick="cp(this)">Copiar</button></div>
+      <pre>terraform destroy</pre>
+    </div>
+    <div class="callout co-warn">
+      <span class="co-icon">⚠️</span>
+      <p>O arquivo <code>.pem</code> gerado localmente <strong>não é removido</strong> pelo <code>destroy</code>. Delete manualmente se necessário.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  AWS Labs · Lab 03 — EC2 Simples · <span>Terraform</span>
+</footer>
+
+<script>
+  function cp(btn) {
+    const pre = btn.closest('.cblock').querySelector('pre');
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copiado';
+      btn.style.color = '#3bffa0';
+      btn.style.borderColor = '#3bffa0';
+      setTimeout(() => { btn.textContent = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 1800);
+    });
+  }
+
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.opacity = '1';
+        e.target.style.transform = 'translateY(0)';
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.07 });
+
+  document.querySelectorAll('section').forEach((s, i) => {
+    s.style.transition = `opacity 0.55s ease ${i * 0.07}s, transform 0.55s ease ${i * 0.07}s`;
+    io.observe(s);
+  });
+</script>
+</body>
+</html>
