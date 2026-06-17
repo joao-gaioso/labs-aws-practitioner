@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 05 — Route 53: DNS Privado</title>
+  <style>
+    :root {
+      --bg:      #0a0a0f;
+      --bg2:     #12121a;
+      --bg3:     #1c1c28;
+      --border:  #2a2a3d;
+      --text:    #eaeaf5;
+      --text2:   #8888aa;
+      --pink:    #f778ba;
+      --pink2:   #ff4da6;
+      --cyan:    #38d9f5;
+      --green:   #3bffa0;
+      --purple:  #b57bff;
+      --yellow:  #ffd166;
+      --orange:  #ff8c42;
+      --card-shadow: 0 6px 30px rgba(0,0,0,0.5);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    /* ── NOISE TEXTURE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: relative;
+      overflow: hidden;
+      padding: 72px 24px 56px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    header::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 70% 55% at 30% 0%, rgba(247,120,186,0.13) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 45% at 75% 10%, rgba(56,217,245,0.10) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 50% 100%, rgba(181,123,255,0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .lab-badge {
+      position: relative;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(247,120,186,0.10);
+      border: 1px solid rgba(247,120,186,0.35);
+      color: var(--pink);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 5px 16px;
+      border-radius: 20px;
+      margin-bottom: 22px;
+      animation: fadeDown 0.6s ease both;
+    }
+    .lab-badge::before { content: '◆'; font-size: 8px; }
+    header h1 {
+      position: relative;
+      z-index: 1;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: #fff;
+      line-height: 1.15;
+      animation: fadeDown 0.65s ease 0.1s both;
+    }
+    header h1 .hi { color: var(--cyan); }
+    header h1 .h2 { color: var(--pink); }
+    .header-desc {
+      position: relative;
+      z-index: 1;
+      color: var(--text2);
+      margin-top: 14px;
+      font-size: 1rem;
+      animation: fadeDown 0.65s ease 0.2s both;
+    }
+    .header-chips {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 26px;
+      animation: fadeDown 0.65s ease 0.3s both;
+    }
+    .chip {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      font-size: 12px;
+      padding: 4px 13px;
+      border-radius: 20px;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .chip:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── LAYOUT ── */
+    main { max-width: 980px; margin: 0 auto; padding: 56px 24px 96px; position: relative; z-index: 1; }
+    section { margin-bottom: 64px; animation: fadeUp 0.5s ease both; opacity: 0; }
+
+    /* ── HEADINGS ── */
+    h2 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 22px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2 .sec-icon { font-size: 1.25rem; }
+    h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--cyan);
+      margin: 26px 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    h3::before { content: '//'; color: var(--border); font-size: 12px; }
+    p { color: var(--text2); margin-bottom: 14px; }
+    p strong { color: var(--text); }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: var(--card-shadow);
+      transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+    }
+    .card:hover {
+      border-color: rgba(56,217,245,0.35);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 40px rgba(56,217,245,0.08);
+    }
+
+    /* ── ARCHITECTURE DIAGRAM ── */
+    .arch-wrap {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 32px 24px;
+      overflow-x: auto;
+    }
+    .arch {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      min-width: 440px;
+    }
+    .arch-node {
+      border-radius: 10px;
+      padding: 12px 28px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      border: 1px solid;
+      transition: transform 0.2s;
+    }
+    .arch-node:hover { transform: scale(1.04); }
+    .node-you   { background: rgba(56,217,245,0.08);  border-color: rgba(56,217,245,0.4);  color: var(--cyan);   }
+    .node-ec2   { background: rgba(247,120,186,0.08); border-color: rgba(247,120,186,0.4); color: var(--pink);   }
+    .node-rec   { background: rgba(59,255,160,0.07);  border-color: rgba(59,255,160,0.35); color: var(--green);  }
+    .node-zone  { background: rgba(181,123,255,0.08); border-color: rgba(181,123,255,0.4); color: var(--purple); }
+    .node-vpc   { background: rgba(255,209,102,0.07); border-color: rgba(255,209,102,0.3); color: var(--yellow); }
+    .node-sub   { font-size: 11px; color: var(--text2); margin-top: 4px; }
+    .arch-connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 2px 0;
+    }
+    .arch-connector .vline {
+      width: 2px;
+      height: 32px;
+    }
+    .arch-connector .vline.pink   { background: linear-gradient(to bottom, rgba(247,120,186,0.7), rgba(247,120,186,0.1)); }
+    .arch-connector .vline.cyan   { background: linear-gradient(to bottom, rgba(56,217,245,0.7),  rgba(56,217,245,0.1));  }
+    .arch-connector .vline.green  { background: linear-gradient(to bottom, rgba(59,255,160,0.7),  rgba(59,255,160,0.1));  }
+    .arch-connector .vline.purple { background: linear-gradient(to bottom, rgba(181,123,255,0.7), rgba(181,123,255,0.1)); }
+    .arch-connector .vline.yellow { background: linear-gradient(to bottom, rgba(255,209,102,0.7), rgba(255,209,102,0.1)); }
+    .arch-connector .arr { font-size: 14px; margin-top: -6px; }
+    .arch-note {
+      margin-top: 20px;
+      background: rgba(255,209,102,0.07);
+      border: 1px solid rgba(255,209,102,0.25);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 12.5px;
+      color: var(--yellow);
+      max-width: 480px;
+      text-align: center;
+    }
+
+    /* ── FILE TREE ── */
+    .ftree {
+      background: #08080e;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 22px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+    }
+    .ftree-row { display: flex; align-items: baseline; gap: 6px; padding: 4px 0; }
+    .ftree-row .fi { color: var(--text2); }
+    .ftree-row .fn { color: var(--text); }
+    .ftree-row .fd { color: var(--text2); font-size: 12px; }
+    .ftree-row .fa { color: var(--pink); font-size: 12px; font-weight: 700; }
+
+    /* ── CODE BLOCKS ── */
+    .cblock {
+      background: #06060c;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 14px 0;
+    }
+    .cblock-head {
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      padding: 7px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cblock-lang {
+      font-size: 10.5px;
+      color: var(--text2);
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+    .cbtn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text2);
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .cbtn:hover { border-color: var(--pink); color: var(--pink); }
+    .cblock pre {
+      padding: 16px 18px;
+      overflow-x: auto;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+      line-height: 1.65;
+      color: #d0d0e8;
+    }
+    .cm  { color: #555577; }
+    .kw  { color: var(--purple); }
+    .st  { color: #a8d8ff; }
+    .fn  { color: var(--green); }
+    .va  { color: var(--orange); }
+    .hl  { color: var(--pink); font-weight: 600; }
+
+    /* ── CALLOUTS ── */
+    .callout {
+      border-radius: 10px;
+      padding: 13px 18px;
+      margin: 14px 0;
+      display: flex;
+      gap: 11px;
+      align-items: flex-start;
+      font-size: 13.5px;
+    }
+    .callout p { margin: 0; }
+    .co-tip     { background: rgba(59,255,160,0.07);  border: 1px solid rgba(59,255,160,0.25);  }
+    .co-info    { background: rgba(56,217,245,0.07);  border: 1px solid rgba(56,217,245,0.25);  }
+    .co-warn    { background: rgba(255,209,102,0.07); border: 1px solid rgba(255,209,102,0.25); }
+    .co-icon    { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── DEPLOY CHIPS ── */
+    .deploy-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+    .dcmd {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 9px 18px;
+      font-family: monospace;
+      font-size: 13px;
+      color: var(--green);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      cursor: default;
+    }
+    .dcmd:hover { border-color: var(--green); box-shadow: 0 0 12px rgba(59,255,160,0.12); }
+    .dcmd .pr { color: var(--text2); }
+
+    /* ── VERIFY STEPS ── */
+    .vsteps { display: flex; flex-direction: column; gap: 14px; }
+    .vstep {
+      display: flex;
+      gap: 16px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .vstep:hover { border-color: rgba(247,120,186,0.4); transform: translateX(5px); }
+    .vstep-num {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--pink), var(--purple));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 14px; color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 0 16px rgba(247,120,186,0.3);
+    }
+    .vstep-body h3 { margin: 0 0 8px; color: var(--text); font-size: 14px; }
+    .vstep-body h3::before { display: none; }
+    .vstep-body p { margin-bottom: 10px; font-size: 13px; }
+
+    /* ── INLINE CODE ── */
+    code {
+      background: rgba(247,120,186,0.10);
+      border: 1px solid rgba(247,120,186,0.18);
+      color: var(--pink);
+      border-radius: 5px;
+      padding: 1px 7px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.87em;
+    }
+
+    /* ── GLOW DIVIDER ── */
+    .gdiv {
+      border: none;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--pink), var(--cyan), transparent);
+      margin: 0 0 48px;
+      opacity: 0.25;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 28px 24px;
+      border-top: 1px solid var(--border);
+      color: var(--text2);
+      font-size: 12px;
+      position: relative;
+      z-index: 1;
+    }
+    footer span { color: var(--pink); }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(22px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 14px rgba(247,120,186,0.25); }
+      50%       { box-shadow: 0 0 28px rgba(56,217,245,0.3); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="lab-badge">AWS Labs · Lab 05</div>
+  <h1>Route 53: <span class="hi">DNS</span> <span class="h2">Privado</span></h1>
+  <p class="header-desc">Hosted Zone privada · Registros A · Resolução de nomes dentro da VPC</p>
+  <div class="header-chips">
+    <span class="chip">🌐 Route 53</span>
+    <span class="chip">💻 EC2 + nginx</span>
+    <span class="chip">🏗️ Terraform</span>
+    <span class="chip">🔒 Hosted Zone Privada</span>
+    <span class="chip">☁️ us-east-1</span>
+    <span class="chip">🔑 SSH</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- OBJETIVO -->
+  <section>
+    <h2><span class="sec-icon">🎯</span> Objetivo</h2>
+    <div class="card">
+      <p>Entender como o Route 53 funciona criando uma <strong>Hosted Zone privada</strong> e registros DNS que apontam para uma EC2. Você vai ver na prática como um nome como <code>app.lojafacil.internal</code> resolve para um IP — e o que acontece quando você muda as configurações.</p>
+      <p>A LojaFácil tem vários servidores internos na AWS. Em vez de os desenvolvedores decorarem IPs como <code>172.31.45.12</code>, eles usam nomes como <code>app.lojafacil.internal</code>. Quando um servidor é substituído e o IP muda, basta atualizar o DNS — os desenvolvedores continuam usando o mesmo nome.</p>
+    </div>
+  </section>
+
+  <hr class="gdiv" />
+
+  <!-- ARQUITETURA -->
+  <section>
+    <h2><span class="sec-icon">🏗️</span> Arquitetura</h2>
+    <div class="arch-wrap">
+      <div class="arch">
+
+        <div class="arch-node node-you">👤 Você (via SSH)</div>
+
+        <div class="arch-connector">
+          <div class="vline cyan"></div>
+          <span class="arr" style="color:var(--cyan)">▼</span>
+        </div>
+
+        <div class="arch-node node-ec2">
+          💻 EC2 (nginx)
+          <div class="node-sub">IP privado: 172.31.x.x</div>
+        </div>
+
+        <div class="arch-connector">
+          <div class="vline pink"></div>
+          <span class="arr" style="color:var(--pink)">▲</span>
+        </div>
+
+        <div class="arch-node node-rec">
+          📌 Route 53 Record A
+          <div class="node-sub">app.lojafacil.internal → 172.31.x.x</div>
+        </div>
+
+        <div class="arch-connector">
+          <div class="vline purple"></div>
+          <span class="arr" style="color:var(--purple)">▲</span>
+        </div>
+
+        <div class="arch-node node-zone">
+          ⬡ Hosted Zone Privada
+          <div class="node-sub">lojafacil.internal</div>
+        </div>
+
+        <div class="arch-connector">
+          <div class="vline yellow"></div>
+          <span class="arr" style="color:var(--yellow)">▲</span>
+        </div>
+
+        <div class="arch-node node-vpc">
+          🌐 VPC Padrão da conta
+        </div>
+
+        <div class="arch-note">
+          💡 A Hosted Zone é <strong>privada</strong> — o nome <code style="color:var(--yellow);background:rgba(255,209,102,0.1);border-color:rgba(255,209,102,0.25)">app.lojafacil.internal</code> só resolve dentro da VPC. De fora da AWS, esse nome não existe.
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <hr class="gdiv" />
+
+  <!-- ESTRUTURA -->
+  <section>
+    <h2><span class="sec-icon">📁</span> Estrutura dos arquivos</h2>
+    <div class="ftree">
+      <div class="ftree-row"><span class="fi">📁</span><span class="fn">lab-05-route53-dns-privado/</span></div>
+      <div class="ftree-row" style="padding-left:22px"><span class="fi">📄</span><span class="fn">versions.tf</span><span class="fi">&nbsp;→&nbsp;</span><span class="fd">versões fixadas</span></div>
+      <div class="ftree-row" style="padding-left:22px"><span class="fi">📄</span><span class="fn">provider.tf</span><span class="fi">&nbsp;→&nbsp;</span><span class="fd">provider AWS</span></div>
+      <div class="ftree-row" style="padding-left:22px"><span class="fi">📄</span><span class="fn">variables.tf</span><span class="fi">&nbsp;→&nbsp;</span><span class="fd">variáveis </span><span class="fa">(incluindo dns_ttl para experimentos)</span></div>
+      <div class="ftree-row" style="padding-left:22px"><span class="fi">📄</span><span class="fn">main.tf</span><span class="fi">&nbsp;→&nbsp;</span><span class="fd">EC2, Security Group, Hosted Zone, registros DNS</span></div>
+      <div class="ftree-row" style="padding-left:22px"><span class="fi">📄</span><span class="fn">outputs.tf</span><span class="fi">&nbsp;→&nbsp;</span><span class="fd">IPs, nome DNS, comando SSH e de teste</span></div>
+    </div>
+  </section>
+
+  <hr class="gdiv" />
+
+  <!-- AVISO BACKEND -->
+  <section>
+    <div style="
+      background: linear-gradient(135deg, rgba(255,140,66,0.10), rgba(247,120,186,0.08));
+      border: 2px solid rgba(255,140,66,0.5);
+      border-radius: 16px;
+      padding: 28px 28px 24px;
+      box-shadow: 0 0 32px rgba(255,140,66,0.10);
+      animation: glow 3s ease-in-out infinite;
+    ">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+        <span style="font-size:28px; line-height:1;">⚠️</span>
+        <span style="font-size:1.1rem; font-weight:800; color:var(--orange); letter-spacing:0.3px;">
+          Não esqueça de preencher o <code style="color:var(--orange);background:rgba(255,140,66,0.15);border-color:rgba(255,140,66,0.3);font-size:0.95em;">backend.tf</code>!
+        </span>
+      </div>
+      <p style="color:var(--text); margin-bottom:16px; font-size:14px;">
+        Antes de rodar o <code>terraform init</code>, abra o arquivo <code>backend.tf</code> e substitua <code style="color:var(--pink)">SEU-BUCKET-AQUI</code> pelo nome real do seu bucket S3:
+      </p>
+      <div class="cblock">
+        <div class="cblock-head">
+          <span class="cblock-lang">hcl · backend.tf</span>
+          <button class="cbtn" onclick="cp(this)">Copiar</button>
+        </div>
+        <pre>terraform {
+  backend "s3" {
+    bucket  = <span class="hl">"nome-do-seu-bucket-aqui"</span>  <span class="cm"># ← altere aqui</span>
+    key     = "lab-05-route53-dns-privado/terraform.tfstate"
+    region  = "us-east-1"
+  }
+}</pre>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
+        <div style="display:flex; align-items:center; gap:10px; font-size:13.5px;">
+          <span style="color:var(--green); font-weight:700;">1.</span>
+          <span style="color:var(--text2);">Edite o <code>backend.tf</code> com o nome real do bucket</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; font-size:13.5px;">
+          <span style="color:var(--green); font-weight:700;">2.</span>
+          <span style="color:var(--text2);">Rode <code>terraform init</code> — ele vai migrar o state automaticamente</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; font-size:13.5px;">
+          <span style="color:var(--green); font-weight:700;">3.</span>
+          <span style="color:var(--text2);">Confirme com <code>yes</code> quando perguntado sobre migração do state</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="gdiv" />
+
+  <!-- DEPLOY -->
+  <section>
+    <h2><span class="sec-icon">🚀</span> Deploy inicial</h2>
+    <div class="deploy-row">
+      <div class="dcmd"><span class="pr">$</span> terraform init</div>
+      <div class="dcmd"><span class="pr">$</span> terraform plan</div>
+      <div class="dcmd"><span class="pr">$</span> terraform apply</div>
+    </div>
+    <p>Após o apply, anote os outputs — você vai precisar deles nos testes:</p>
+    <div class="cblock">
+      <div class="cblock-head">
+        <span class="cblock-lang">bash</span>
+        <button class="cbtn" onclick="cp(this)">Copiar</button>
+      </div>
+      <pre><span class="cm"># Comando para conectar na EC2</span>
+terraform output comando_ssh
+
+<span class="cm"># Nome DNS criado</span>
+terraform output dominio_app
+
+<span class="cm"># IP para comparar com o DNS</span>
+terraform output ip_privado_ec2</pre>
+    </div>
+  </section>
+
+  <hr class="gdiv" />
+
+  <!-- VERIFICAÇÃO -->
+  <section>
+    <h2><span class="sec-icon">✅</span> Verificação básica</h2>
+    <p>Antes de começar os experimentos, confirme que tudo está funcionando.</p>
+
+    <div class="vsteps">
+
+      <div class="vstep">
+        <div class="vstep-num">1</div>
+        <div class="vstep-body">
+          <h3>Conecte na EC2 via SSH</h3>
+          <p>O comando completo já aparece no output do Terraform:</p>
+          <div class="cblock">
+            <div class="cblock-head">
+              <span class="cblock-lang">bash</span>
+              <button class="cbtn" onclick="cp(this)">Copiar</button>
+            </div>
+            <pre>ssh -i lojafacil-key.pem ec2-user@<span class="hl">&lt;IP_PUBLICO&gt;</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="vstep">
+        <div class="vstep-num">2</div>
+        <div class="vstep-body">
+          <h3>Dentro da EC2, teste a resolução DNS</h3>
+          <div class="cblock">
+            <div class="cblock-head">
+              <span class="cblock-lang">bash · dentro da EC2</span>
+              <button class="cbtn" onclick="cp(this)">Copiar</button>
+            </div>
+            <pre><span class="cm"># Deve retornar a página do nginx com "Bem-vinda ao lab Route 53!"</span>
+curl http://<span class="hl">app.lojafacil.internal</span>
+
+<span class="cm"># Deve mostrar o IP privado da EC2</span>
+dig <span class="hl">app.lojafacil.internal</span> +short</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="vstep">
+        <div class="vstep-num">3</div>
+        <div class="vstep-body">
+          <h3>Compare o IP retornado pelo DNS com o IP da EC2</h3>
+          <div class="cblock">
+            <div class="cblock-head">
+              <span class="cblock-lang">bash · dentro da EC2</span>
+              <button class="cbtn" onclick="cp(this)">Copiar</button>
+            </div>
+            <pre><span class="cm"># IP privado da instância</span>
+hostname -I</pre>
+          </div>
+          <div class="callout co-tip">
+            <span class="co-icon">✅</span>
+            <p>Os dois IPs devem ser <strong>iguais</strong>. Se sim, o DNS está funcionando corretamente!</p>
+          </div>
+          <div class="callout co-warn">
+            <span class="co-icon">⚠️</span>
+            <p>Lembre-se: <code>dig</code> e <code>curl http://app.lojafacil.internal</code> só funcionam <strong>de dentro da EC2</strong>, pois a Hosted Zone é privada e só resolve dentro da VPC.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  AWS Labs · Lab 05 — Route 53 DNS Privado · <span>Terraform</span>
+</footer>
+
+<script>
+  function cp(btn) {
+    const pre = btn.closest('.cblock').querySelector('pre');
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copiado';
+      btn.style.color = '#3bffa0';
+      btn.style.borderColor = '#3bffa0';
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }, 1800);
+    });
+  }
+
+  // Scroll-triggered animations
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.opacity = '1';
+        e.target.style.transform = 'translateY(0)';
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.07 });
+
+  document.querySelectorAll('section').forEach((s, i) => {
+    s.style.transition = `opacity 0.55s ease ${i * 0.07}s, transform 0.55s ease ${i * 0.07}s`;
+    io.observe(s);
+  });
+</script>
+</body>
+</html>
