@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab 07 — Lambda com Python | Terraform AWS Labs</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #060b18;
+  --surface: #0d1526;
+  --surface2: #131d33;
+  --border: rgba(255,255,255,0.07);
+  --orange: #ff6b35;
+  --teal: #00e5c8;
+  --purple: #7c5cfc;
+  --blue: #38bdf8;
+  --green: #22d3a4;
+  --yellow: #fbbf24;
+  --pink: #f472b6;
+  --text: #e2eaf8;
+  --muted: #7a90b8;
+  --code-bg: #0a1020;
+  --gold: #ffd700;
+  --silver: #c0c0c0;
+  --bronze: #cd7f32;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.7;overflow-x:hidden;}
+::selection{background:rgba(124,92,252,0.4);color:#fff;}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(6,11,24,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 2rem;}
+.nav-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:1.5rem;height:60px;overflow-x:auto;white-space:nowrap;}
+.nav-inner::-webkit-scrollbar{display:none;}
+nav a{color:var(--muted);text-decoration:none;font-size:0.8rem;font-weight:500;transition:color .2s;flex-shrink:0;}
+nav a:hover{color:var(--teal);}
+.nav-badge{background:linear-gradient(135deg,var(--orange),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:800;font-size:0.9rem;flex-shrink:0;}
+
+/* ── HERO ── */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:6rem 2rem 4rem;position:relative;overflow:hidden;}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(124,92,252,0.18) 0%,transparent 70%),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(0,229,200,0.1) 0%,transparent 60%),radial-gradient(ellipse 50% 50% at 20% 60%,rgba(255,107,53,0.08) 0%,transparent 60%);pointer-events:none;}
+.orbs{position:absolute;inset:0;pointer-events:none;}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);animation:floatorb 8s ease-in-out infinite;}
+.orb1{width:400px;height:400px;background:rgba(124,92,252,0.12);top:-100px;left:-100px;animation-delay:0s;}
+.orb2{width:300px;height:300px;background:rgba(0,229,200,0.1);bottom:-50px;right:-50px;animation-delay:3s;}
+.orb3{width:250px;height:250px;background:rgba(255,107,53,0.08);top:40%;left:60%;animation-delay:6s;}
+@keyframes floatorb{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(30px,-30px) scale(1.1);}}
+.lambda-icon{width:100px;height:100px;margin:0 auto 2rem;background:linear-gradient(135deg,var(--orange),var(--purple));border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:3rem;box-shadow:0 20px 60px rgba(124,92,252,0.4);animation:iconpulse 3s ease-in-out infinite;}
+@keyframes iconpulse{0%,100%{box-shadow:0 20px 60px rgba(124,92,252,0.4);}50%{box-shadow:0 20px 80px rgba(124,92,252,0.7);}}
+.hero-tag{display:inline-block;background:rgba(124,92,252,0.2);border:1px solid rgba(124,92,252,0.4);color:var(--purple);padding:0.3rem 1rem;border-radius:100px;font-size:0.8rem;font-weight:600;margin-bottom:1.5rem;letter-spacing:0.05em;}
+h1{font-size:clamp(2.2rem,5vw,4rem);font-weight:900;line-height:1.1;margin-bottom:1.5rem;background:linear-gradient(135deg,#fff 30%,var(--teal) 70%,var(--purple) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.hero-sub{font-size:1.1rem;color:var(--muted);max-width:600px;margin:0 auto 3rem;}
+.hero-pills{display:flex;flex-wrap:wrap;gap:0.75rem;justify-content:center;}
+.pill{background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:0.4rem 1rem;font-size:0.8rem;color:var(--muted);transition:all .3s;}
+.pill:hover{border-color:var(--teal);color:var(--teal);}
+</style>
+</head>
+<body>
+<style>
+/* ── LAYOUT ── */
+.container{max-width:1100px;margin:0 auto;padding:0 2rem;}
+section{padding:5rem 0;}
+.section-label{display:inline-block;font-size:0.75rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--teal);margin-bottom:0.75rem;}
+h2{font-size:clamp(1.6rem,3vw,2.4rem);font-weight:800;margin-bottom:1rem;background:linear-gradient(135deg,#fff,var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+h3{font-size:1.2rem;font-weight:700;color:#fff;margin:1.5rem 0 0.75rem;}
+p{color:var(--muted);margin-bottom:1rem;}
+strong{color:var(--text);}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.75rem;transition:all .3s;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;inset:0;opacity:0;background:linear-gradient(135deg,rgba(124,92,252,0.05),rgba(0,229,200,0.03));transition:opacity .3s;}
+.card:hover{border-color:rgba(124,92,252,0.3);transform:translateY(-3px);box-shadow:0 20px 40px rgba(0,0,0,0.3);}
+.card:hover::before{opacity:1;}
+.grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;}
+.grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.25rem;}
+
+/* ── CODE ── */
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:0.82rem;line-height:1.8;margin:1rem 0;}
+code{font-family:'JetBrains Mono',monospace;font-size:0.82rem;}
+.inline-code{background:rgba(124,92,252,0.15);border:1px solid rgba(124,92,252,0.2);color:#c4b5fd;padding:0.1em 0.45em;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:0.82em;}
+.code-block{position:relative;}
+.code-header{display:flex;align-items:center;gap:0.5rem;background:var(--surface2);border:1px solid var(--border);border-bottom:none;border-radius:12px 12px 0 0;padding:0.6rem 1rem;}
+.code-header pre{border-radius:0 0 12px 12px;margin-top:0;}
+.dot{width:12px;height:12px;border-radius:50%;}
+.dot-r{background:#ff5f57;}.dot-y{background:#febc2e;}.dot-g{background:#28c840;}
+.code-lang{margin-left:auto;font-size:0.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+
+/* syntax */
+.kw{color:#c084fc;}.fn{color:#60a5fa;}.str{color:#86efac;}.cm{color:#4b5563;font-style:italic;}
+.nm{color:#fbbf24;}.op{color:#94a3b8;}.var{color:#e2eaf8;}.tf-r{color:#f87171;}
+.tf-k{color:#c084fc;}.tf-s{color:#86efac;}.tf-v{color:#fbbf24;}.tf-c{color:#4b5563;font-style:italic;}
+
+/* ── ARCH DIAGRAM ── */
+.arch-box{background:var(--code-bg);border:1px solid var(--border);border-radius:16px;padding:2rem;overflow-x:auto;}
+.arch-box pre{background:transparent;border:none;padding:0;margin:0;color:var(--muted);}
+
+/* ── CONCEPT CARDS ── */
+.concept-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:1rem;flex-shrink:0;}
+.icon-orange{background:rgba(255,107,53,0.15);border:1px solid rgba(255,107,53,0.3);}
+.icon-teal{background:rgba(0,229,200,0.1);border:1px solid rgba(0,229,200,0.2);}
+.icon-purple{background:rgba(124,92,252,0.15);border:1px solid rgba(124,92,252,0.3);}
+.icon-blue{background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.2);}
+.icon-green{background:rgba(34,211,164,0.1);border:1px solid rgba(34,211,164,0.2);}
+.icon-yellow{background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2);}
+.concept-title{font-weight:700;color:#fff;margin-bottom:0.5rem;font-size:1rem;}
+
+/* ── FILE TREE ── */
+.filetree{background:var(--code-bg);border:1px solid var(--border);border-radius:16px;padding:1.5rem 2rem;font-family:'JetBrains Mono',monospace;font-size:0.85rem;line-height:2;}
+.ft-dir{color:var(--blue);}
+.ft-file{color:var(--text);}
+.ft-arrow{color:var(--muted);}
+.ft-new{color:var(--teal);font-weight:600;}
+
+/* ── RESOURCES TABLE ── */
+.res-table{width:100%;border-collapse:collapse;margin-top:1rem;}
+.res-table th{background:var(--surface2);color:var(--muted);font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;padding:0.75rem 1rem;text-align:left;border-bottom:1px solid var(--border);}
+.res-table td{padding:0.85rem 1rem;border-bottom:1px solid var(--border);color:var(--muted);font-size:0.9rem;vertical-align:top;}
+.res-table tr:last-child td{border-bottom:none;}
+.res-table tr:hover td{background:rgba(255,255,255,0.02);}
+.res-name{color:var(--teal);font-family:'JetBrains Mono',monospace;font-size:0.8rem;}
+
+/* ── STEPS ── */
+.steps{display:flex;flex-direction:column;gap:1rem;}
+.step{display:flex;gap:1rem;align-items:flex-start;}
+.step-num{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--blue));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.85rem;flex-shrink:0;margin-top:2px;}
+.step-content h4{font-weight:700;color:#fff;margin-bottom:0.25rem;}
+.step-content p{margin:0;color:var(--muted);font-size:0.9rem;}
+</style>
+<style>
+/* ── TEST TABS ── */
+.tabs{display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.5rem;}
+.tab{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.5rem 1.1rem;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all .2s;color:var(--muted);}
+.tab.active{background:linear-gradient(135deg,var(--purple),var(--blue));border-color:transparent;color:#fff;}
+.tab-panel{display:none;}.tab-panel.active{display:block;}
+
+/* ── CHALLENGES ── */
+.challenges{display:flex;flex-direction:column;gap:2rem;}
+.challenge{border-radius:20px;padding:2.5rem;position:relative;overflow:hidden;transition:transform .3s;}
+.challenge:hover{transform:translateY(-4px);}
+.ch-gold{background:linear-gradient(135deg,rgba(20,15,0,0.95),rgba(30,22,0,0.95));border:1px solid rgba(255,215,0,0.25);}
+.ch-silver{background:linear-gradient(135deg,rgba(10,15,20,0.95),rgba(15,20,28,0.95));border:1px solid rgba(192,192,192,0.2);}
+.ch-bronze{background:linear-gradient(135deg,rgba(20,10,5,0.95),rgba(28,15,8,0.95));border:1px solid rgba(205,127,50,0.25);}
+.ch-glow-gold{position:absolute;top:-60px;right:-60px;width:200px;height:200px;background:rgba(255,215,0,0.06);border-radius:50%;filter:blur(40px);}
+.ch-glow-silver{position:absolute;top:-60px;right:-60px;width:200px;height:200px;background:rgba(192,192,192,0.05);border-radius:50%;filter:blur(40px);}
+.ch-glow-bronze{position:absolute;top:-60px;right:-60px;width:200px;height:200px;background:rgba(205,127,50,0.07);border-radius:50%;filter:blur(40px);}
+.ch-header{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;}
+.ch-medal{font-size:2.5rem;animation:medalshine 3s ease-in-out infinite;}
+@keyframes medalshine{0%,100%{filter:brightness(1);}50%{filter:brightness(1.4) drop-shadow(0 0 8px currentColor);}}
+.ch-badge{padding:0.3rem 0.8rem;border-radius:100px;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;}
+.badge-gold{background:rgba(255,215,0,0.15);color:var(--gold);border:1px solid rgba(255,215,0,0.3);}
+.badge-silver{background:rgba(192,192,192,0.1);color:var(--silver);border:1px solid rgba(192,192,192,0.25);}
+.badge-bronze{background:rgba(205,127,50,0.15);color:var(--bronze);border:1px solid rgba(205,127,50,0.3);}
+.ch-title{font-size:1.3rem;font-weight:800;color:#fff;}
+.ch-desc{color:var(--muted);margin-bottom:1.5rem;line-height:1.8;}
+.ch-goal{background:rgba(255,255,255,0.04);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem;}
+.ch-goal p{margin:0;font-size:0.9rem;}
+.ch-tips{list-style:none;}
+.ch-tips li{display:flex;gap:0.6rem;color:var(--muted);font-size:0.88rem;padding:0.35rem 0;border-bottom:1px solid var(--border);}
+.ch-tips li:last-child{border:none;}
+.tip-icon{color:var(--teal);flex-shrink:0;}
+.verify-label{display:flex;align-items:center;gap:0.5rem;color:var(--green);font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-top:1.5rem;margin-bottom:0.75rem;}
+
+/* ── CONCEPTS TABLE ── */
+.concepts-table{width:100%;border-collapse:collapse;}
+.concepts-table th{background:var(--surface2);color:var(--muted);font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;padding:0.75rem 1rem;text-align:left;border-bottom:1px solid var(--border);}
+.concepts-table td{padding:0.85rem 1rem;border-bottom:1px solid var(--border);font-size:0.88rem;vertical-align:top;}
+.concepts-table tr:last-child td{border-bottom:none;}
+.concepts-table tr:hover td{background:rgba(255,255,255,0.02);}
+.concepts-table td:first-child{color:var(--teal);font-family:'JetBrains Mono',monospace;font-size:0.82rem;font-weight:600;}
+.concepts-table td:nth-child(2){color:var(--text);}
+.concepts-table td:nth-child(3){color:var(--muted);}
+
+/* ── BEST PRACTICES ── */
+.bp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;}
+.bp-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.2rem 1.4rem;display:flex;align-items:flex-start;gap:0.85rem;transition:all .25s;}
+.bp-card:hover{border-color:rgba(34,211,164,0.3);background:rgba(34,211,164,0.04);}
+.bp-check{width:28px;height:28px;border-radius:8px;background:rgba(34,211,164,0.12);border:1px solid rgba(34,211,164,0.25);display:flex;align-items:center;justify-content:center;color:var(--green);font-size:0.9rem;flex-shrink:0;}
+.bp-text strong{color:#fff;font-size:0.88rem;display:block;margin-bottom:0.2rem;}
+.bp-text span{color:var(--muted);font-size:0.8rem;font-family:'JetBrains Mono',monospace;}
+
+/* ── FAQ ── */
+.faq{display:flex;flex-direction:column;gap:0.75rem;}
+.faq-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.faq-q{padding:1.1rem 1.5rem;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-weight:600;color:#fff;transition:background .2s;}
+.faq-q:hover{background:var(--surface2);}
+.faq-chevron{color:var(--teal);font-size:1.2rem;transition:transform .3s;flex-shrink:0;}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .4s ease,padding .3s;}
+.faq-a-inner{padding:0 1.5rem 1.25rem;color:var(--muted);font-size:0.92rem;line-height:1.8;}
+.faq-item.open .faq-chevron{transform:rotate(180deg);}
+.faq-item.open .faq-a{max-height:600px;}
+
+/* ── DIVIDER ── */
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:0;}
+
+/* ── CALLOUT ── */
+.callout{border-radius:12px;padding:1rem 1.25rem;margin:1rem 0;display:flex;gap:0.75rem;align-items:flex-start;}
+.callout-warn{background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);}
+.callout-info{background:rgba(56,189,248,0.07);border:1px solid rgba(56,189,248,0.2);}
+.callout-tip{background:rgba(0,229,200,0.07);border:1px solid rgba(0,229,200,0.2);}
+.callout-icon{font-size:1.1rem;flex-shrink:0;line-height:1.7;}
+.callout p{margin:0;font-size:0.88rem;color:var(--muted);}
+.callout p strong{color:var(--text);}
+
+/* ── DESTROY ── */
+.destroy-box{background:linear-gradient(135deg,rgba(248,113,113,0.06),rgba(239,68,68,0.04));border:1px solid rgba(248,113,113,0.2);border-radius:16px;padding:2rem;}
+
+/* ── FOOTER ── */
+footer{text-align:center;padding:3rem 2rem;color:var(--muted);font-size:0.85rem;border-top:1px solid var(--border);}
+footer span{color:var(--purple);}
+
+/* ── ANIMATIONS ── */
+.fade-up{opacity:0;transform:translateY(30px);transition:opacity .7s ease,transform .7s ease;}
+.fade-up.visible{opacity:1;transform:translateY(0);}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:rgba(124,92,252,0.4);}
+</style>
+
+<!-- ══ NAV ══ -->
+<nav>
+  <div class="nav-inner">
+    <span class="nav-badge">Lab 07</span>
+    <a href="#objetivo">Objetivo</a>
+    <a href="#arquitetura">Arquitetura</a>
+    <a href="#conceitos">Conceitos</a>
+    <a href="#deploy">Deploy</a>
+    <a href="#testes">Testes</a>
+    <a href="#desafios">Desafios</a>
+    <a href="#boas-praticas">Boas Práticas</a>
+    <a href="#faq">FAQ</a>
+  </div>
+</nav>
+
+<!-- ══ HERO ══ -->
+<section class="hero" id="objetivo">
+  <div class="hero-bg"></div>
+  <div class="orbs"><div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div></div>
+  <div style="position:relative;z-index:1">
+    <div class="lambda-icon">λ</div>
+    <div class="hero-tag">Terraform AWS Labs · Lab 07</div>
+    <h1>Lambda com Python</h1>
+    <p class="hero-sub">Crie sua primeira função Lambda com Terraform: IAM Role com least privilege, logs gerenciados, empacotamento automático e endpoint HTTPS sem API Gateway.</p>
+    <div class="hero-pills">
+      <span class="pill">AWS Lambda</span>
+      <span class="pill">Python 3.13</span>
+      <span class="pill">IAM Role</span>
+      <span class="pill">CloudWatch Logs</span>
+      <span class="pill">Function URL</span>
+      <span class="pill">X-Ray</span>
+      <span class="pill">archive_file</span>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- ══ CONTEXTO ══ -->
+<section id="contexto">
+  <div class="container">
+    <div class="fade-up">
+      <span class="section-label">Contexto</span>
+      <h2>A LojaFácil precisa de uma saudação inteligente</h2>
+      <div class="grid-2" style="gap:2rem;align-items:start">
+        <div>
+          <p>A LojaFácil precisa de uma funcionalidade simples: um serviço que recebe um nome e devolve uma saudação personalizada. Esse tipo de lógica pequena, que roda por milissegundos e só é chamada quando necessário, é o caso de uso perfeito para <strong>Lambda</strong>.</p>
+          <p>Em vez de manter um servidor ligado 24h esperando chamadas, a Lambda executa <strong>só quando é invocada</strong> — você paga apenas pelo tempo real de execução.</p>
+        </div>
+        <div style="display:grid;gap:0.75rem">
+          <div class="card" style="padding:1.1rem 1.4rem;display:flex;gap:0.75rem;align-items:center">
+            <span style="font-size:1.4rem">✅</span>
+            <div><strong style="font-size:0.9rem">Quando usar Lambda</strong><br><span style="font-size:0.82rem;color:var(--muted)">Lógica pequena, eventos, webhooks, tarefas agendadas</span></div>
+          </div>
+          <div class="card" style="padding:1.1rem 1.4rem;display:flex;gap:0.75rem;align-items:center">
+            <span style="font-size:1.4rem">❌</span>
+            <div><strong style="font-size:0.9rem">Quando não usar</strong><br><span style="font-size:0.82rem;color:var(--muted)">Processos contínuos, tarefas acima de 15 min, estado em memória</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- ══ ARQUITETURA ══ -->
+<section id="arquitetura">
+  <div class="container">
+    <div class="fade-up">
+      <span class="section-label">Arquitetura</span>
+      <h2>O que será criado</h2>
+      <p>Cinco recursos Terraform criam toda a infraestrutura. Cada um tem um papel específico.</p>
+
+      <div class="arch-box" style="margin-bottom:2rem">
+        <pre>
+  Você (curl / AWS CLI)
+          │
+          │  HTTPS
+          ▼
+  ┌───────────────────────┐
+  │   Function URL        │  ← endpoint gerado pela AWS, sem API Gateway
+  │   (auth = NONE)       │
+  └──────────┬────────────┘
+             │  invoca
+             ▼
+  ┌───────────────────────┐      ┌──────────────────────────────┐
+  │   Lambda Function     │─────►│  CloudWatch Log Group        │
+  │   hello_world.py      │      │  /aws/lambda/lab-lambda      │
+  │   runtime: python3.13 │      │  retenção: 7 dias            │
+  └──────────┬────────────┘      └──────────────────────────────┘
+             │  assume
+             ▼                   ┌──────────────────────────────┐
+  ┌───────────────────────┐      │  X-Ray                       │
+  │   IAM Role            │      │  traces de latência          │
+  │   lab-lambda-role     │      └──────────────────────────────┘
+  │   (least privilege)   │
+  └───────────────────────┘</pre>
+      </div>
+
+      <table class="res-table">
+        <thead><tr><th>Recurso Terraform</th><th>Nome criado</th><th>Para que serve</th></tr></thead>
+        <tbody>
+          <tr><td><span class="res-name">aws_iam_role</span></td><td>lab-lambda-role</td><td>Identidade (crachá) da Lambda na AWS</td></tr>
+          <tr><td><span class="res-name">aws_iam_role_policy_attachment</span></td><td>—</td><td>Anexa permissão para escrever logs</td></tr>
+          <tr><td><span class="res-name">aws_cloudwatch_log_group</span></td><td>/aws/lambda/lab-lambda-function</td><td>Armazena logs com retenção de 7 dias</td></tr>
+          <tr><td><span class="res-name">aws_lambda_function</span></td><td>lab-lambda-function</td><td>A função Python em si</td></tr>
+          <tr><td><span class="res-name">aws_lambda_function_url</span></td><td>—</td><td>Endpoint HTTPS para invocar sem API Gateway</td></tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top:2rem">
+        <h3 style="margin-top:0">📁 Estrutura dos arquivos</h3>
+        <div class="filetree">
+          <div><span class="ft-dir">lab-07-lambda-python/</span></div>
+          <div>&nbsp;&nbsp;├── <span class="ft-file">versions.tf</span> &nbsp;&nbsp;&nbsp;<span class="ft-arrow">→ versões fixadas (inclui provider archive)</span></div>
+          <div>&nbsp;&nbsp;├── <span class="ft-file">provider.tf</span> &nbsp;&nbsp;&nbsp;<span class="ft-arrow">→ provider AWS com default_tags</span></div>
+          <div>&nbsp;&nbsp;├── <span class="ft-file">backend.tf</span> &nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-arrow">→ backend S3 para o state file</span></div>
+          <div>&nbsp;&nbsp;├── <span class="ft-file">variables.tf</span> &nbsp;&nbsp;<span class="ft-arrow">→ variáveis de entrada</span></div>
+          <div>&nbsp;&nbsp;├── <span class="ft-file">main.tf</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-arrow">→ IAM role, log group, Lambda, Function URL</span></div>
+          <div>&nbsp;&nbsp;├── <span class="ft-file">outputs.tf</span> &nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-arrow">→ nome, ARN, URL, comandos prontos</span></div>
+          <div>&nbsp;&nbsp;└── <span class="ft-dir">src/</span></div>
+          <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── <span class="ft-new">hello_world.py</span> <span class="ft-arrow">→ código Python da função</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- ══ CONCEITOS ══ -->
+<section id="conceitos">
+  <div class="container">
+    <div class="fade-up">
+      <span class="section-label">Conceitos</span>
+      <h2>Entenda antes de criar</h2>
+      <p>Leia esta seção antes de rodar o <span class="inline-code">terraform apply</span>. Ela explica o porquê de cada decisão — assim você não está só copiando, está entendendo.</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="concept-icon icon-orange">🪪</div>
+          <div class="concept-title">IAM Role — o crachá da Lambda</div>
+          <p style="font-size:0.9rem">Quando a Lambda executa, ela precisa provar pra AWS quem ela é. A <strong>Role</strong> é esse crachá. Ela tem duas partes:</p>
+          <p style="font-size:0.85rem"><strong style="color:var(--teal)">Trust Policy</strong> — define quem pode usar o crachá. Aqui: <span class="inline-code">lambda.amazonaws.com</span>. Só o serviço Lambda pode assumir essa role.</p>
+          <p style="font-size:0.85rem"><strong style="color:var(--orange)">Policy Attachment</strong> — o que o crachá permite fazer. Anexamos apenas <span class="inline-code">AWSLambdaBasicExecutionRole</span>: escrever logs no CloudWatch. Nada mais.</p>
+          <div class="callout callout-warn" style="margin-top:0.75rem">
+            <span class="callout-icon">⚠️</span>
+            <p>Nunca use <strong>AdministratorAccess</strong> em uma Lambda. Se ela for comprometida, o invasor teria poder total sobre sua conta AWS.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="concept-icon icon-purple">📦</div>
+          <div class="concept-title">archive_file — empacotando o código</div>
+          <p style="font-size:0.9rem">A Lambda não aceita um arquivo <span class="inline-code">.py</span> direto — ela precisa de um <span class="inline-code">.zip</span>. O <span class="inline-code">data "archive_file"</span> faz esse empacotamento localmente:</p>
+          <div class="arch-box" style="padding:0.75rem 1rem;margin:0.75rem 0">
+            <pre style="font-size:0.78rem;line-height:1.6">src/hello_world.py
+      ↓ (empacota local)
+.build/hello_world.zip
+      ↓ (upload)
+AWS Lambda</pre>
+          </div>
+          <p style="font-size:0.85rem">É um <strong>data source</strong>, não um resource — não cria nada na AWS. Só roda localmente na sua máquina.</p>
+        </div>
+
+        <div class="card">
+          <div class="concept-icon icon-teal">🔑</div>
+          <div class="concept-title">source_code_hash — detectando mudanças</div>
+          <p style="font-size:0.9rem">Sem esse campo, você edita o <span class="inline-code">.py</span>, roda <span class="inline-code">terraform apply</span> e... <strong>nada acontece</strong>. O Terraform não percebe que o código mudou.</p>
+          <p style="font-size:0.85rem">O motivo: o Terraform rastreia o estado pelos atributos. O <span class="inline-code">filename</span> do zip nunca muda — é sempre <span class="inline-code">.build/hello_world.zip</span>.</p>
+          <p style="font-size:0.85rem">Com <span class="inline-code">source_code_hash</span>, o hash SHA256 muda quando o código muda → Terraform detecta → novo deploy. ✅</p>
+          <div class="callout callout-tip">
+            <span class="callout-icon">💡</span>
+            <p>Edite o <span class="inline-code">.py</span> e rode <span class="inline-code">terraform plan</span>. Procure <span class="inline-code">source_code_hash</span> no output — ele vai aparecer como changed.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="concept-icon icon-blue">🌐</div>
+          <div class="concept-title">Function URL — sem API Gateway</div>
+          <p style="font-size:0.9rem">A Function URL cria um endpoint HTTPS permanente direto para a Lambda — sem precisar de API Gateway.</p>
+          <table style="width:100%;font-size:0.8rem;border-collapse:collapse;margin-top:0.75rem">
+            <tr><th style="text-align:left;padding:0.4rem 0.5rem;color:var(--muted);border-bottom:1px solid var(--border)"></th><th style="padding:0.4rem 0.5rem;color:var(--teal);border-bottom:1px solid var(--border)">Function URL</th><th style="padding:0.4rem 0.5rem;color:var(--muted);border-bottom:1px solid var(--border)">API Gateway</th></tr>
+            <tr><td style="padding:0.4rem 0.5rem;color:var(--muted)">Configuração</td><td style="padding:0.4rem 0.5rem;color:var(--green)">Simples</td><td style="padding:0.4rem 0.5rem;color:var(--muted)">Complexa</td></tr>
+            <tr><td style="padding:0.4rem 0.5rem;color:var(--muted)">Custo extra</td><td style="padding:0.4rem 0.5rem;color:var(--green)">Não</td><td style="padding:0.4rem 0.5rem;color:var(--muted)">Sim</td></tr>
+            <tr><td style="padding:0.4rem 0.5rem;color:var(--muted)">Roteamento</td><td style="padding:0.4rem 0.5rem;color:var(--muted)">Não</td><td style="padding:0.4rem 0.5rem;color:var(--green)">Sim</td></tr>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="concept-icon icon-green">🌿</div>
+          <div class="concept-title">Variáveis de ambiente</div>
+          <p style="font-size:0.9rem">Valores injetados no código via Terraform — sem alterar o <span class="inline-code">.py</span>. No código você lê com <span class="inline-code">os.environ.get("NOME_PADRAO")</span>.</p>
+          <p style="font-size:0.85rem">Imagine dev e prod: comportamento diferente, código idêntico. Só as variáveis mudam.</p>
+          <div class="callout callout-warn" style="margin-top:0.75rem">
+            <span class="callout-icon">⚠️</span>
+            <p>Nunca coloque <strong>senhas, tokens ou API keys</strong> em env vars da Lambda — ficam visíveis no console AWS. Use <strong>Secrets Manager</strong> para segredos.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="concept-icon icon-yellow">⚡</div>
+          <div class="concept-title">depends_on — ordem de criação</div>
+          <p style="font-size:0.9rem">O Terraform cria recursos em paralelo para ganhar velocidade. O problema: a Lambda pode ser criada antes da policy ser anexada à role.</p>
+          <p style="font-size:0.85rem">Quando ela é invocada e tenta escrever logs — <strong>falha com erro de permissão</strong>.</p>
+          <div class="arch-box" style="padding:0.75rem 1rem;margin:0.75rem 0">
+            <pre style="font-size:0.78rem;line-height:1.6">IAM Role → Policy → Log Group → Lambda</pre>
+          </div>
+          <p style="font-size:0.85rem">Com <span class="inline-code">depends_on</span>, forçamos essa ordem e eliminamos a race condition.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- ══ DEPLOY ══ -->
+<section id="deploy">
+  <div class="container">
+    <div class="fade-up">
+      <span class="section-label">Deploy</span>
+      <h2>Criando a infraestrutura</h2>
+      <div class="grid-2" style="gap:2rem;align-items:start">
+        <div>
+          <div class="steps">
+            <div class="step"><div class="step-num">1</div><div class="step-content"><h4>terraform init</h4><p>Baixa os providers (aws ~> 5.0 e archive ~> 2.0) e inicializa o backend S3.</p></div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-content"><h4>terraform plan</h4><p>Mostra o que será criado sem criar nada. Leia com atenção — são 5 recursos.</p></div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-content"><h4>terraform apply</h4><p>Cria tudo. Tempo estimado: ~15 segundos.</p></div></div>
+            <div class="step"><div class="step-num">4</div><div class="step-content"><h4>Copie os outputs</h4><p>A function URL e os comandos prontos aparecem logo depois do apply.</p></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="code-block">
+            <div class="code-header"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><span class="code-lang">bash</span></div>
+            <pre><span class="cm"># 1. Inicializar</span>
+<span class="fn">terraform</span> init
+
+<span class="cm"># 2. Planejar</span>
+<span class="fn">terraform</span> plan
+
+<span class="cm"># 3. Criar</span>
+<span class="fn">terraform</span> apply
+
+<span class="cm"># 4. Ver outputs após o apply</span>
+<span class="fn">terraform</span> output function_url
+<span class="fn">terraform</span> output comando_invoke_cli
+<span class="fn">terraform</span> output comando_curl
+<span class="fn">terraform</span> output comando_logs</pre>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:2rem">
+        <h3 style="margin-top:0">O código Python que será deployado</h3>
+        <div class="code-block">
+          <div class="code-header"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><span class="code-lang">python · src/hello_world.py</span></div>
+          <pre><span class="kw">import</span> <span class="var">json</span>
+<span class="kw">import</span> <span class="var">logging</span>
+<span class="kw">import</span> <span class="var">os</span>
+
+<span class="var">logger</span> <span class="op">=</span> <span class="var">logging</span>.<span class="fn">getLogger</span>()
+<span class="var">logger</span>.<span class="fn">setLevel</span>(<span class="var">logging</span>.<span class="nm">INFO</span>)
+
+<span class="kw">def</span> <span class="fn">lambda_handler</span>(<span class="var">event</span>, <span class="var">context</span>):
+    <span class="var">logger</span>.<span class="fn">info</span>(<span class="str">f"Evento recebido: </span>{<span class="var">json</span>.<span class="fn">dumps</span>(<span class="var">event</span>)}<span class="str">"</span>)
+
+    <span class="cm"># Lê o nome do evento; se não vier, usa a variável de ambiente</span>
+    <span class="var">nome</span> <span class="op">=</span> <span class="var">event</span>.<span class="fn">get</span>(<span class="str">"nome"</span>, <span class="var">os</span>.<span class="var">environ</span>.<span class="fn">get</span>(<span class="str">"NOME_PADRAO"</span>, <span class="str">"Mundo"</span>))
+
+    <span class="var">resposta</span> <span class="op">=</span> {
+        <span class="str">"mensagem"</span>: <span class="str">f"Olá, </span>{<span class="var">nome</span>}<span class="str">! Esta é minha primeira Lambda com Terraform."</span>,
+        <span class="str">"versao"</span>:   <span class="var">os</span>.<span class="var">environ</span>.<span class="fn">get</span>(<span class="str">"APP_VERSION"</span>, <span class="str">"1.0.0"</span>),
+        <span class="str">"request_id"</span>: <span class="var">context</span>.<span class="var">aws_request_id</span>,
+    }
+
+    <span class="kw">return</span> {
+        <span class="str">"statusCode"</span>: <span class="nm">200</span>,
+        <span class="str">"headers"</span>: {<span class="str">"Content-Type"</span>: <span class="str">"application/json"</span>},
+        <span class="str">"body"</span>: <span class="var">json</span>.<span class="fn">dumps</span>(<span class="var">resposta</span>, <span class="var">ensure_ascii</span><span class="op">=</span><span class="kw">False</span>),
+    }</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- ══ TESTES ══ -->
+<section id="testes">
+  <div class="container">
+    <div class="fade-up">
+      <span class="section-label">Testes</span>
+      <h2>Como invocar a Lambda</h2>
+      <p>Há quatro formas de testar. Experimente todas — cada uma mostra um ângulo diferente.</p>
+
+      <div class="tabs">
+        <div class="tab active" onclick="showTab('cli')">1 · AWS CLI</div>
+        <div class="tab" onclick="showTab('curl')">2 · curl</div>
+        <div class="tab" onclick="showTab('console')">3 · Console AWS</div>
+        <div class="tab" onclick="showTab('logs')">4 · Logs em tempo real</div>
+      </div>
+
+      <div id="tab-cli" class="tab-panel active">
+        <p style="margin-bottom:1rem">A forma mais comum no dia a dia. O resultado vai para <span class="inline-code">resposta.json</span> e o <span class="inline-code">cat</span> exibe na tela.</p>
+        <div class="code-block">
+          <div class="code-header"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><span class="code-lang">bash</span></div>
+          <pre><span class="fn">aws</span> lambda invoke \
+  --function-name <span class="str">$(terraform output -raw function_name)</span> \
+  --payload <span class="str">'{"nome":"Ana"}'</span> \
+  --cli-binary-format raw-in-base64-out \
+  resposta.json && <span class="fn">cat</span> resposta.json</pre>
+        </div>
+        <p style="margin-top:1rem">Resposta esperada:</p>
+        <div class="code-block">
+          <div class="code-header"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><span class="code-lang">json</span></div>
+          <pre>{
+  <span class="str">"statusCode"</span>: <span class="nm">200</span>,
+  <span class="str">"headers"</span>: {<span class="str">"Content-Type"</span>: <span class="str">"application/json"</span>},
+  <span class="str">"body"</span>: <span class="str">"{\"mensagem\": \"Olá, Ana! Esta é minha primeira Lambda com Terraform.\",
+           \"versao\": \"1.0.0\",
+           \"request_id\": \"abc-123-xyz...\"}"</span>
+}</pre>
+        </div>
+        <div class="callout callout-info" style="margin-top:1rem">
+          <span class="callout-icon">💡</span>
+          <p>O <span class="inline-code">request_id</span> é único por invocação. Copie esse valor e procure nos logs do CloudWatch para correlacionar resposta com logs.</p>
+        </div>
+      </div>
+
+      <div id="tab-curl" class="tab-panel">
+        <p style="margin-bottom:1rem">A Function URL permite chamadas HTTP diretas. Sem CLI, sem credenciais — só um <span class="inline-code">curl</span>.</p>
+        <div class="code-block">
+          <div class="code-header"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><span class="code-lang">bash</span></div>
+          <pre><span class="fn">curl</span> -s -X POST <span class="str">"$(terraform output -raw function_url)"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"nome":"Ana"}'</span></pre>
+        </div>
+        <p style="margin-top:1rem">Você também pode abrir a URL direto no browser (GET sem body) — vai usar o <span class="inline-code">NOME_PADRAO</span> da variável de ambiente.</p>
+      </div>
+
+      <div id="tab-console" class="tab-panel">
+        <p style="margin-bottom:1rem">Visual e didático — perfeito para entender como a Lambda funciona por dentro.</p>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><div class="step-content"><h4>Acesse o console Lambda</h4><p><code style="font-size:0.8rem;color:var(--blue)">console.aws.amazon.com/lambda/home#/functions/lab-lambda-function</code></p></div></div>
+          <div class="step"><div class="step-num">2</div><div class="step-content"><h4>Aba "Test" → botão "Test"</h4><p>Em Event JSON, coloque: <span class="inline-code">{ "nome": "Ana" }</span></p></div></div>
+          <div class="step"><div class="step-num">3</div><div class="step-content"><h4>Analise o resultado</h4><p>Veja a resposta, os logs da execução, a duração em ms e a memória usada.</p></div></div>
+          <div class="step"><div class="step-num">4</div><div class="step-content"><h4>Aba "Monitor"</h4><p>Veja gráficos de invocações, erros e latência. Clique em "View CloudWatch logs".</p></div></div>
+        </div>
+      </div>
+
+      <div id="tab-logs" class="tab-panel">
+        <p style="margin-bottom:1rem">Abra <strong>dois terminais</strong>. No primeiro, observe os logs. No segundo, invoque.</p>
+        <div class="grid-2">
+          <div>
+            <p style="color:var(--teal);font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">Terminal 1 — observando logs</p>
+            <div class="code-block">
+              <div class="code-header"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+              <pre><span class="fn">aws</span> logs tail \
+  <span class="str">"$(terraform output -raw log_group)"</span> \
+  --follow --region us-east-1</pre>
+            </div>
+          </div>
+          <div>
+            <p style="color:var(--orange);font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">Terminal 2 — invocando</p>
+            <div class="code-block">
+              <div class="code-header"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+              <pre><span class="fn">aws</span> lambda invoke \
+  --function-name <span class="str">$(terraform output -raw function_name)</span> \
+  --payload <span class="str">'{"nome":"Ana"}'</span> \
+  --cli-binary-format raw-in-base64-out \
+  /dev/null</pre>
+            </div>
+          </div>
+        </div>
+        <p style="margin-top:1.25rem">No Terminal 1 você verá aparecer em tempo real:</p>
+        <div class="code-block">
+          <div class="code-header"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><span class="code-lang">cloudwatch logs</span></div>
+          <pre><span class="cm">START RequestId: abc-123...</span>
+<span class="str">INFO  Evento recebido: {"nome": "Ana"}</span>
+<span class="str">INFO  Resposta enviada: {"mensagem": "Olá, Ana!...", ...}</span>
+<span class="cm">END   RequestId: abc-123...</span>
+<span class="nm">REPORT RequestId: abc-123...  Duration: 2.45 ms  Billed Duration: 3 ms  Memory Size: 128 MB  Max Memory Used: 36 MB</span></pre>
+        </div>
+        <div class="callout callout-tip" style="margin-top:1rem">
+          <span class="callout-icon">💡</span>
+          <p>A linha <strong>REPORT</strong> é valiosa: mostra duração real, duração faturada (arredondada para 1ms) e memória usada. Para essa função simples, você vai ver que ela usa ~36 MB dos 128 MB alocados.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- ══ DESAFIOS ══ -->
+<section id="desafios" style="background:linear-gradient(180deg,var(--bg) 0%,rgba(13,21,38,0.5) 100%)">
+  <div class="container">
+    <div class="fade-up">
+      <span class="section-label">Desafios</span>
+      <h2>Hora de fazer sozinha 💪</h2>
+      <p>Estes desafios foram criados para você resolver sem um passo a passo. Use o código do lab como referência e pesquise quando precisar. Isso é exatamente como funciona no trabalho real.</p>
+
+      <div class="challenges">
+
+        <!-- Desafio 1 -->
+        <div class="challenge ch-bronze">
+          <div class="ch-glow-bronze"></div>
+          <div style="position:relative;z-index:1">
+            <div class="ch-header">
+              <span class="ch-medal">🥉</span>
+              <div>
+                <span class="ch-badge badge-bronze">DESAFIO 1 · INICIANTE</span>
+                <div class="ch-title" style="margin-top:0.4rem">Adicione a data e hora na resposta</div>
+              </div>
+            </div>
+            <p class="ch-desc">Atualmente a Lambda retorna <span class="inline-code">mensagem</span>, <span class="inline-code">versao</span> e <span class="inline-code">request_id</span>. Sua missão é adicionar o campo <span class="inline-code">timestamp</span> com a data e hora atual da execução.</p>
+
+            <div class="ch-goal">
+              <p style="font-size:0.82rem;color:var(--muted);margin-bottom:0.5rem">✅ <strong style="color:var(--text)">Resposta esperada após o desafio:</strong></p>
+              <pre style="background:transparent;border:none;padding:0;margin:0;font-size:0.8rem">{
+  <span class="str">"mensagem"</span>: <span class="str">"Olá, Ana! Esta é minha primeira Lambda com Terraform."</span>,
+  <span class="str">"versao"</span>: <span class="str">"1.0.0"</span>,
+  <span class="str">"request_id"</span>: <span class="str">"abc-123..."</span>,
+  <span class="str">"timestamp"</span>: <span class="str">"2025-06-23T14:30:00.123456"</span>
+}</pre>
+            </div>
+
+            <ul class="ch-tips">
+              <li><span class="tip-icon">→</span>O módulo <span class="inline-code">datetime</span> já vem com o Python (sem instalar nada)</li>
+              <li><span class="tip-icon">→</span><span class="inline-code">from datetime import datetime</span> e <span class="inline-code">datetime.now().isoformat()</span> são seus amigos</li>
+              <li><span class="tip-icon">→</span>Depois de editar o <span class="inline-code">.py</span>, rode <span class="inline-code">terraform plan</span> — observe o <span class="inline-code">source_code_hash</span> mudar</li>
+              <li><span class="tip-icon">→</span>Rode <span class="inline-code">terraform apply</span> para fazer o novo deploy</li>
+            </ul>
+
+            <div class="verify-label"><span>🔍</span> Como verificar</div>
+            <div class="code-block">
+              <div class="code-header"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><span class="code-lang">bash</span></div>
+              <pre><span class="fn">aws</span> lambda invoke \
+  --function-name <span class="str">$(terraform output -raw function_name)</span> \
+  --payload <span class="str">'{"nome":"Ana"}'</span> \
+  --cli-binary-format raw-in-base64-out \
+  resposta.json && <span class="fn">cat</span> resposta.json
+<span class="cm"># O campo "timestamp" deve aparecer na resposta</span></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Desafio 2 -->
+        <div class="challenge ch-silver">
+          <div class="ch-glow-silver"></div>
+          <div style="position:relative;z-index:1">
+            <div class="ch-header">
+              <span class="ch-medal">🥈</span>
+              <div>
+                <span class="ch-badge badge-silver">DESAFIO 2 · INTERMEDIÁRIO</span>
+                <div class="ch-title" style="margin-top:0.4rem">Adicione uma variável de ambiente <span style="font-family:'JetBrains Mono',monospace;font-size:0.9em">AMBIENTE</span></div>
+              </div>
+            </div>
+            <p class="ch-desc">Adicione uma nova variável de ambiente chamada <span class="inline-code">AMBIENTE</span> com valor <span class="inline-code">"desenvolvimento"</span>. A resposta da Lambda deve incluir esse valor no campo <span class="inline-code">ambiente</span>.</p>
+
+            <div class="ch-goal">
+              <p style="font-size:0.82rem;color:var(--muted);margin-bottom:0.5rem">✅ <strong style="color:var(--text)">Você precisará alterar 3 arquivos:</strong></p>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.5rem;margin-top:0.75rem">
+                <div style="background:rgba(124,92,252,0.1);border:1px solid rgba(124,92,252,0.2);border-radius:8px;padding:0.6rem 0.8rem;font-size:0.82rem"><span style="color:var(--purple)">1.</span> <span class="inline-code">variables.tf</span><br><span style="color:var(--muted)">criar variável <span class="inline-code">ambiente</span></span></div>
+                <div style="background:rgba(124,92,252,0.1);border:1px solid rgba(124,92,252,0.2);border-radius:8px;padding:0.6rem 0.8rem;font-size:0.82rem"><span style="color:var(--purple)">2.</span> <span class="inline-code">main.tf</span><br><span style="color:var(--muted)">adicionar <span class="inline-code">AMBIENTE</span> nas env vars</span></div>
+                <div style="background:rgba(124,92,252,0.1);border:1px solid rgba(124,92,252,0.2);border-radius:8px;padding:0.6rem 0.8rem;font-size:0.82rem"><span style="color:var(--purple)">3.</span> <span class="inline-code">hello_world.py</span><br><span style="color:var(--muted)">ler e incluir na resposta</span></div>
+              </div>
+            </div>
+
+            <ul class="ch-tips">
+              <li><span class="tip-icon">→</span>Siga o mesmo padrão da variável <span class="inline-code">NOME_PADRAO</span> que já existe</li>
+              <li><span class="tip-icon">→</span>No Python: <span class="inline-code">os.environ.get("AMBIENTE")</span></li>
+              <li><span class="tip-icon">→</span>Após as mudanças, o <span class="inline-code">terraform plan</span> mostrará dois changes: código Python e env vars</li>
+            </ul>
+
+            <div class="verify-label"><span>🔍</span> Como verificar</div>
+            <p style="font-size:0.85rem;color:var(--muted)">Invoque e confirme <span class="inline-code">"ambiente": "desenvolvimento"</span> na resposta. Depois mude o valor para <span class="inline-code">"producao"</span> no <span class="inline-code">variables.tf</span>, aplique novamente e veja a resposta mudar <strong>sem alterar uma linha de Python</strong>.</p>
+          </div>
+        </div>
+
+        <!-- Desafio 3 -->
+        <div class="challenge ch-gold">
+          <div class="ch-glow-gold"></div>
+          <div style="position:relative;z-index:1">
+            <div class="ch-header">
+              <span class="ch-medal">🥇</span>
+              <div>
+                <span class="ch-badge badge-gold">DESAFIO 3 · AVANÇADO</span>
+                <div class="ch-title" style="margin-top:0.4rem">Valide a entrada e retorne erro 400</div>
+              </div>
+            </div>
+            <p class="ch-desc">Atualmente, se você enviar <span class="inline-code">{"nome": ""}</span> (string vazia), a Lambda retorna <em style="color:var(--pink)">"Olá, !"</em> — um bug. Corrija para retornar <span class="inline-code">statusCode 400</span> quando o nome for vazio.</p>
+
+            <div class="ch-goal">
+              <p style="font-size:0.82rem;color:var(--muted);margin-bottom:0.75rem">✅ <strong style="color:var(--text)">Comportamento esperado:</strong></p>
+              <div class="grid-2" style="gap:0.75rem">
+                <div>
+                  <p style="font-size:0.78rem;color:var(--green);font-weight:700;margin-bottom:0.4rem">{"nome":"Ana"} → 200 ✅</p>
+                  <pre style="background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:0.75rem;font-size:0.78rem;margin:0">{<span class="str">"statusCode"</span>: <span class="nm">200</span>,
+ <span class="str">"body"</span>: <span class="str">"Olá, Ana!..."</span>}</pre>
+                </div>
+                <div>
+                  <p style="font-size:0.78rem;color:var(--pink);font-weight:700;margin-bottom:0.4rem">{"nome":""} → 400 ❌</p>
+                  <pre style="background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:0.75rem;font-size:0.78rem;margin:0">{<span class="str">"statusCode"</span>: <span class="nm">400</span>,
+ <span class="str">"body"</span>: <span class="str">"{'erro':...}"</span>}</pre>
+                </div>
+              </div>
+            </div>
+
+            <ul class="ch-tips">
+              <li><span class="tip-icon">→</span>No Python, <span class="inline-code">""</span> é <span class="inline-code">False</span> em um <span class="inline-code">if</span> — então <span class="inline-code">if not nome:</span> funciona</li>
+              <li><span class="tip-icon">→</span>O <span class="inline-code">statusCode</span> faz parte do dicionário de retorno, não é uma exceção Python</li>
+              <li><span class="tip-icon">→</span>Não use <span class="inline-code">raise Exception</span> — Lambda retorna erros de forma controlada pelo <span class="inline-code">statusCode</span></li>
+              <li><span class="tip-icon">→</span>Lembre de fazer o redeploy com <span class="inline-code">terraform apply</span> após editar o <span class="inline-code">.py</span></li>
+            </ul>
+
+            <div class="verify-label"><span>🔍</span> Três testes para verificar</div>
+            <div class="code-block">
+              <div class="code-header"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><span class="code-lang">bash</span></div>
+              <pre><span class="cm"># ✅ Deve retornar statusCode 200</span>
+<span class="fn">aws</span> lambda invoke --function-name <span class="str">$(terraform output -raw function_name)</span> \
+  --payload <span class="str">'{"nome":"Ana"}'</span> --cli-binary-format raw-in-base64-out out.json && <span class="fn">cat</span> out.json
+
+<span class="cm"># ❌ Deve retornar statusCode 400</span>
+<span class="fn">aws</span> lambda invoke --function-name <span class="str">$(terraform output -raw function_name)</span> \
+  --payload <span class="str">'{"nome":""}'</span>  --cli-binary-format raw-in-base64-out out.json && <span class="fn">cat</span> out.json
+
+<span class="cm"># ✅ Sem nome → usa NOME_PADRAO → deve retornar statusCode 200</span>
+<span class="fn">aws</span> lambda invoke --function-name <span class="str">$(terraform output -raw function_name)</span> \
+  --payload <span class="str">'{}'</span>           --cli-binary-format raw-in-base64-out out.json && <span class="fn">cat</span> out.json</pre>
+            </div>
+
+            <div class="callout callout-info" style="margin-top:1.25rem">
+              <span class="callout-icon">💡</span>
+              <p>Retornar <span class="inline-code">statusCode 400</span> não é um erro da Lambda — ela executou com sucesso e devolveu uma resposta controlada. Esse é o padrão HTTP: o código indica o resultado da operação, não o estado da função.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- ══ BOAS PRÁTICAS ══ -->
+<section id="boas-praticas">
+  <div class="container">
+    <div class="fade-up">
+      <span class="section-label">Boas Práticas</span>
+      <h2>O que foi aplicado neste lab</h2>
+      <div class="bp-grid">
+        <div class="bp-card"><div class="bp-check">✓</div><div class="bp-text"><strong>Least Privilege</strong><span>Só AWSLambdaBasicExecutionRole — nada mais</span></div></div>
+        <div class="bp-card"><div class="bp-check">✓</div><div class="bp-text"><strong>Log Group com retenção</strong><span>retention_in_days = 7 desde o início</span></div></div>
+        <div class="bp-card"><div class="bp-check">✓</div><div class="bp-text"><strong>Detecção de mudança no código</strong><span>source_code_hash obrigatório</span></div></div>
+        <div class="bp-card"><div class="bp-check">✓</div><div class="bp-text"><strong>Ordem de criação garantida</strong><span>depends_on na aws_lambda_function</span></div></div>
+        <div class="bp-card"><div class="bp-check">✓</div><div class="bp-text"><strong>Rastreamento de performance</strong><span>tracing_config { mode = "Active" }</span></div></div>
+        <div class="bp-card"><div class="bp-check">✓</div><div class="bp-text"><strong>Sem segredos no código</strong><span>os.environ.get(...) — não hardcoded</span></div></div>
+        <div class="bp-card"><div class="bp-check">✓</div><div class="bp-text"><strong>Tags em todos os recursos</strong><span>default_tags no provider.tf</span></div></div>
+        <div class="bp-card"><div class="bp-check">✓</div><div class="bp-text"><strong>Versões fixadas</strong><span>aws ~> 5.0 e archive ~> 2.0</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- ══ FAQ ══ -->
+<section id="faq">
+  <div class="container">
+    <div class="fade-up">
+      <span class="section-label">FAQ</span>
+      <h2>Dúvidas frequentes</h2>
+      <div class="faq">
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)">
+            Por que criar o log group explicitamente se a Lambda cria sozinha?
+            <span class="faq-chevron">›</span>
+          </div>
+          <div class="faq-a"><div class="faq-a-inner">
+            A Lambda cria o log group automaticamente na primeira invocação — mas <strong>sem retenção definida</strong>. Os logs ficam armazenados para sempre e geram custo crescente. Criando explicitamente no Terraform: a retenção é configurada desde o início, o <span class="inline-code">terraform destroy</span> apaga o log group junto com os outros recursos, e o estado do Terraform rastreia tudo com visibilidade total.
+          </div></div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)">
+            O que acontece se eu não colocar source_code_hash?
+            <span class="faq-chevron">›</span>
+          </div>
+          <div class="faq-a"><div class="faq-a-inner">
+            Você edita o <span class="inline-code">.py</span>, roda <span class="inline-code">terraform apply</span> e... nada acontece. O Terraform não detecta a mudança porque o caminho do arquivo (<span class="inline-code">.build/hello_world.zip</span>) não mudou. A Lambda continua rodando o código antigo silenciosamente — sem erro, sem aviso.
+          </div></div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)">
+            Por que authorization_type = "NONE" na Function URL?
+            <span class="faq-chevron">›</span>
+          </div>
+          <div class="faq-a"><div class="faq-a-inner">
+            Para simplificar o lab — a URL funciona com <span class="inline-code">curl</span> sem precisar de credenciais AWS. Em produção, use <span class="inline-code">"AWS_IAM"</span>. Isso exige que o chamador tenha permissão <span class="inline-code">lambda:InvokeFunctionUrl</span> na IAM — apenas quem você autorizar consegue chamar.
+          </div></div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)">
+            A Lambda pode acessar S3, DynamoDB e outros serviços?
+            <span class="faq-chevron">›</span>
+          </div>
+          <div class="faq-a"><div class="faq-a-inner">
+            Sim — mas você precisa anexar políticas adicionais à role. Neste lab, a role só tem <span class="inline-code">AWSLambdaBasicExecutionRole</span> (logs). Se a Lambda precisar de S3, você cria uma policy específica (<span class="inline-code">s3:GetObject</span> para o bucket X) e a anexa. Sempre seguindo o least privilege — não dê <span class="inline-code">s3:*</span> se só precisa de leitura.
+          </div></div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)">
+            O que é o request_id na resposta?
+            <span class="faq-chevron">›</span>
+          </div>
+          <div class="faq-a"><div class="faq-a-inner">
+            É o identificador único de cada invocação, gerado pela AWS (<span class="inline-code">context.aws_request_id</span>). Útil para correlacionar a resposta com os logs no CloudWatch — procure esse ID nos logs para ver exatamente o que aconteceu naquela chamada. Em produção, sempre retorne o request_id nas respostas de API para facilitar debugging.
+          </div></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- ══ DESTROY ══ -->
+<section>
+  <div class="container">
+    <div class="fade-up">
+      <div class="destroy-box">
+        <h3 style="margin-top:0;color:var(--tf-r)">🧹 Destruindo os recursos</h3>
+        <p>Ao terminar o lab, remova tudo para não gerar custo.</p>
+        <div class="code-block">
+          <div class="code-header"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><span class="code-lang">bash</span></div>
+          <pre><span class="fn">terraform</span> destroy</pre>
+        </div>
+        <p style="margin-top:1rem;font-size:0.9rem">Todos os recursos são removidos: Lambda, IAM Role, Function URL e o CloudWatch Log Group (incluindo os logs armazenados).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <p>Lab 07 — Lambda com Python · Terraform AWS Labs · <span>BRQ</span></p>
+</footer>
+
+<!-- ══ JS ══ -->
+<script>
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function toggleFaq(el) {
+  el.parentElement.classList.toggle('open');
+}
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      setTimeout(() => e.target.classList.add('visible'), i * 80);
+    }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
