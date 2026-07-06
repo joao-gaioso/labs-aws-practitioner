@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lab S3 → SNS → SQS → Lambda → DynamoDB | Guia AWS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --bg2: #161b22;
+      --bg3: #21262d;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-dim: #8b949e;
+      --orange: #FF9900;
+      --green: #51CF66;
+      --purple: #845EF7;
+      --pink: #E83E8C;
+      --blue: #4DABF7;
+      --teal: #3BC7A8;
+      --yellow: #F4C430;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ---- HERO ---- */
+    .hero {
+      background: linear-gradient(135deg, #0d1117 0%, #1a1040 50%, #0d1117 100%);
+      padding: 60px 24px 50px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      animation: pulse-bg 8s ease-in-out infinite;
+    }
+
+    @keyframes pulse-bg {
+      0%, 100% { background: linear-gradient(135deg, #0d1117 0%, #1a1040 50%, #0d1117 100%); }
+      50%       { background: linear-gradient(135deg, #0d1117 0%, #1a2040 50%, #0d1117 100%); }
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: rgba(255,153,0,0.15);
+      border: 1px solid rgba(255,153,0,0.4);
+      color: var(--orange);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      letter-spacing: .5px;
+    }
+
+    .hero h1 {
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      font-weight: 800;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, var(--orange) 0%, var(--yellow) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.05rem;
+      color: var(--text-dim);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* ---- TABS ---- */
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 20px 24px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      justify-content: center;
+    }
+
+    .tab-btn {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 8px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all .2s;
+    }
+
+    .tab-btn:hover { border-color: var(--orange); color: var(--orange); }
+    .tab-btn.active { background: var(--orange); border-color: var(--orange); color: #000; font-weight: 700; }
+
+    /* ---- LAYOUT ---- */
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+
+    .section { display: none; animation: fadeIn .4s ease; }
+    .section.active { display: block; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ---- SECTION TITLE ---- */
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    /* ---- FLOW DIAGRAM ---- */
+    .flow-diagram {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px 24px;
+      margin-bottom: 32px;
+    }
+
+    .flow-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      animation: floatNode 3s ease-in-out infinite;
+    }
+
+    .flow-node:nth-child(3)  { animation-delay: .3s; }
+    .flow-node:nth-child(5)  { animation-delay: .6s; }
+    .flow-node:nth-child(7)  { animation-delay: .9s; }
+    .flow-node:nth-child(9)  { animation-delay: 1.2s; }
+
+    @keyframes floatNode {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-8px); }
+    }
+
+    .flow-icon {
+      font-size: 2.4rem;
+      width: 72px;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 16px;
+      border: 2px solid;
+    }
+
+    .flow-label { font-size: 13px; font-weight: 600; }
+    .flow-sub   { font-size: 11px; color: var(--text-dim); }
+
+    .node-s3     { border-color: var(--green);  background: rgba(81,207,102,.1); }
+    .node-sns    { border-color: var(--pink);   background: rgba(232,62,140,.1); }
+    .node-sqs    { border-color: var(--purple); background: rgba(132,94,247,.1); }
+    .node-lambda { border-color: var(--orange); background: rgba(255,153,0,.1);  }
+    .node-dynamo { border-color: var(--teal);   background: rgba(59,199,168,.1); }
+
+    .flow-arrow {
+      font-size: 1.6rem;
+      color: var(--orange);
+      animation: arrowPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes arrowPulse {
+      0%, 100% { opacity: .5; transform: scaleX(1); }
+      50%       { opacity: 1;  transform: scaleX(1.15); }
+    }
+
+    /* ---- GRID / CARDS ---- */
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px; }
+
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: transform .2s, box-shadow .2s;
+    }
+
+    .card:hover { transform: translateY(-5px); box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+
+    .card-icon  { font-size: 1.8rem; margin-bottom: 10px; }
+    .card-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .card-body  { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+
+    /* ---- SERVICE CARDS ---- */
+    .service-card {
+      background: var(--bg2);
+      border-radius: 14px;
+      padding: 22px;
+      border-left: 4px solid;
+      transition: transform .2s, box-shadow .2s;
+      margin-bottom: 16px;
+    }
+
+    .service-card:hover { transform: translateY(-5px); box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+
+    .service-card.s3     { border-color: var(--green);  }
+    .service-card.sns    { border-color: var(--pink);   }
+    .service-card.sqs    { border-color: var(--purple); }
+    .service-card.lambda { border-color: var(--orange); }
+    .service-card.dynamo { border-color: var(--teal);   }
+
+    .service-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .service-icon   { font-size: 2rem; }
+    .service-name   { font-size: 17px; font-weight: 700; }
+    .service-tagline{ font-size: 12px; color: var(--text-dim); }
+    .service-body   { font-size: 13px; color: var(--text-dim); line-height: 1.7; }
+
+    /* ---- ALERT / INFO BOXES ---- */
+    .alert {
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+      border-left: 4px solid;
+    }
+
+    .alert-green  { background: rgba(81,207,102,.08);  border-color: var(--green);  color: var(--green);  }
+    .alert-yellow { background: rgba(244,196,48,.08);  border-color: var(--yellow); color: var(--yellow); }
+    .alert-blue   { background: rgba(77,171,247,.08);  border-color: var(--blue);   color: var(--blue);   }
+    .alert-orange { background: rgba(255,153,0,.08);   border-color: var(--orange); color: var(--orange); }
+    .alert-purple { background: rgba(132,94,247,.08);  border-color: var(--purple); color: var(--purple); }
+
+    .alert strong { font-weight: 700; }
+    .alert p      { color: var(--text); margin-top: 4px; }
+</style>
+    <style>
+    /* ---- TABLE ---- */
+    .table-wrap { overflow-x: auto; margin-bottom: 24px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th    { background: var(--bg3); color: var(--orange); font-weight: 700; padding: 10px 14px; text-align: left; border-bottom: 2px solid var(--border); }
+    td    { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-dim); vertical-align: top; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    /* ---- STEPS ---- */
+    .step {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 28px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: box-shadow .2s;
+    }
+
+    .step:hover { box-shadow: 0 4px 16px rgba(0,0,0,.3); }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--orange);
+      color: #000;
+      font-weight: 800;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step-content h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .step-content p  { font-size: 13px; color: var(--text-dim); margin-bottom: 10px; }
+
+    /* ---- CODE BLOCKS ---- */
+    .code-wrap { position: relative; margin-top: 8px; }
+
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all .2s;
+      z-index: 2;
+    }
+
+    .copy-btn:hover { border-color: var(--orange); color: var(--orange); }
+
+    pre {
+      background: #010409;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.6;
+      font-family: 'Consolas', 'Courier New', monospace;
+    }
+
+    .c-orange { color: var(--orange); }
+    .c-green  { color: var(--green);  }
+    .c-blue   { color: var(--blue);   }
+    .c-purple { color: var(--purple); }
+    .c-pink   { color: var(--pink);   }
+    .c-teal   { color: var(--teal);   }
+    .c-yellow { color: var(--yellow); }
+    .c-dim    { color: var(--text-dim); }
+
+    /* ---- CHALLENGE CARDS ---- */
+    .challenge-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 20px;
+      transition: transform .2s, box-shadow .2s;
+    }
+
+    .challenge-card:hover { transform: translateY(-5px); box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+
+    .challenge-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .challenge-num    { font-size: 1.4rem; }
+
+    .badge {
+      padding: 3px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .3px;
+    }
+
+    .badge-green  { background: rgba(81,207,102,.15);  color: var(--green);  border: 1px solid var(--green); }
+    .badge-yellow { background: rgba(244,196,48,.15);  color: var(--yellow); border: 1px solid var(--yellow); }
+    .badge-orange { background: rgba(255,153,0,.15);   color: var(--orange); border: 1px solid var(--orange); }
+    .badge-purple { background: rgba(132,94,247,.15);  color: var(--purple); border: 1px solid var(--purple); }
+
+    .challenge-title { font-size: 15px; font-weight: 700; }
+    .challenge-body  { font-size: 13px; color: var(--text-dim); margin-bottom: 14px; line-height: 1.6; }
+
+    .hint-box {
+      background: rgba(77,171,247,.06);
+      border: 1px solid rgba(77,171,247,.2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--blue);
+    }
+
+    .hint-box strong { font-weight: 700; }
+
+    /* ---- QUIZ ---- */
+    .quiz-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .quiz-q {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .quiz-options { display: flex; flex-direction: column; gap: 8px; }
+
+    .quiz-option {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: left;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      transition: all .2s;
+    }
+
+    .quiz-option:hover:not(.disabled) { border-color: var(--blue); background: rgba(77,171,247,.08); }
+    .quiz-option.disabled { cursor: not-allowed; opacity: .6; }
+    .quiz-option.correct  { border-color: var(--green) !important; background: rgba(81,207,102,.12) !important; color: var(--green) !important; opacity: 1 !important; }
+    .quiz-option.wrong    { border-color: #f85149 !important; background: rgba(248,81,73,.12) !important; color: #f85149 !important; opacity: 1 !important; }
+
+    .quiz-feedback {
+      display: none;
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .quiz-feedback.show   { display: block; }
+    .correct-fb { background: rgba(81,207,102,.08); border: 1px solid var(--green); color: var(--green); }
+    .wrong-fb   { background: rgba(248,81,73,.08);  border: 1px solid #f85149; color: #f85149; }
+
+    /* ---- FOOTER ---- */
+    footer {
+      text-align: center;
+      padding: 32px 24px;
+      border-top: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 13px;
+      margin-top: 40px;
+    }
+
+    footer span { color: var(--orange); }
+
+    /* ---- RESPONSIVE ---- */
+    @media (max-width: 600px) {
+      .flow-diagram { gap: 6px; padding: 24px 12px; }
+      .flow-icon    { width: 52px; height: 52px; font-size: 1.6rem; border-radius: 12px; }
+      .flow-arrow   { font-size: 1.2rem; }
+      .tabs         { padding: 12px; }
+      .tab-btn      { padding: 7px 12px; font-size: 13px; }
+    }
+    </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">☁️ AWS Cloud Practitioner Lab</div>
+    <h1>S3 → SNS → SQS → Lambda → DynamoDB</h1>
+    <p>Guia completo de processamento de pedidos serverless orientado a eventos. Feito para quem está começando na AWS.</p>
+  </div>
+
+  <!-- TABS -->
+  <nav class="tabs">
+    <button class="tab-btn active" onclick="showTab('visao-geral', event)">🗺️ Visão Geral</button>
+    <button class="tab-btn" onclick="showTab('servicos', event)">🔧 Serviços</button>
+    <button class="tab-btn" onclick="showTab('passo-a-passo', event)">🚀 Passo a Passo</button>
+    <button class="tab-btn" onclick="showTab('desafios', event)">🏆 Desafios</button>
+    <button class="tab-btn" onclick="showTab('quiz', event)">🧠 Quiz</button>
+  </nav>
+
+  <!-- ===================== SECTION 1: VISÃO GERAL ===================== -->
+  <section id="visao-geral" class="section active">
+    <div class="container">
+      <h2 class="section-title">🗺️ Visão Geral do Lab</h2>
+
+      <!-- Flow Diagram -->
+      <div class="flow-diagram">
+        <div class="flow-node">
+          <div class="flow-icon node-s3">🪣</div>
+          <div class="flow-label" style="color:var(--green)">S3</div>
+          <div class="flow-sub">Upload do arquivo</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">
+          <div class="flow-icon node-sns">📣</div>
+          <div class="flow-label" style="color:var(--pink)">SNS</div>
+          <div class="flow-sub">Notificação de evento</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">
+          <div class="flow-icon node-sqs">📬</div>
+          <div class="flow-label" style="color:var(--purple)">SQS</div>
+          <div class="flow-sub">Fila de mensagens</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">
+          <div class="flow-icon node-lambda">⚡</div>
+          <div class="flow-label" style="color:var(--orange)">Lambda</div>
+          <div class="flow-sub">Processamento</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">
+          <div class="flow-icon node-dynamo">🗄️</div>
+          <div class="flow-label" style="color:var(--teal)">DynamoDB</div>
+          <div class="flow-sub">Persistência</div>
+        </div>
+      </div>
+
+      <!-- Info Cards -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-icon">🛒</div>
+          <div class="card-title">Cenário Real</div>
+          <div class="card-body">Uma loja online faz upload de um arquivo <code>pedidos.json</code> para o S3. O sistema processa cada pedido automaticamente, sem servidores dedicados, sem gerenciar infraestrutura.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">💡</div>
+          <div class="card-title">Por que Serverless?</div>
+          <div class="card-body">Você paga apenas pelo que usa. Zero pedidos = zero custo. A AWS escala automaticamente de 1 pedido por dia a 1 milhão — sem configuração manual de servidores.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔗</div>
+          <div class="card-title">Event-Driven</div>
+          <div class="card-body">Cada serviço reage a eventos do anterior. Nenhum serviço fica em loop esperando. Isso é a essência da arquitetura orientada a eventos: baixo acoplamento, alta escalabilidade.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📏</div>
+          <div class="card-title">Limite de 256 KB</div>
+          <div class="card-body">SNS e SQS têm limite de 256 KB por mensagem. Por isso o S3 <strong>não envia o arquivo inteiro</strong> — envia apenas a <em>referência</em> (bucket + key). A Lambda busca o conteúdo diretamente no S3.</div>
+        </div>
+      </div>
+
+      <!-- Alerts -->
+      <div class="alert alert-green">
+        <strong>🌐 Padrão Fan-Out</strong>
+        <p>O SNS pode distribuir a mesma notificação para múltiplas filas SQS simultaneamente. Isso permite que diferentes microsserviços (estoque, financeiro, logística) processem o mesmo pedido de forma independente e paralela.</p>
+      </div>
+
+      <div class="alert alert-yellow">
+        <strong>⚠️ Atenção: float vs Decimal no DynamoDB</strong>
+        <p>O boto3 (SDK Python da AWS) rejeita valores <code>float</code> ao salvar no DynamoDB. Use sempre <code>Decimal('9.99')</code> em vez de <code>9.99</code> para evitar o erro <em>Float types are not supported</em>. Isso protege a precisão de valores monetários.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 2: SERVIÇOS ===================== -->
+  <section id="servicos" class="section">
+    <div class="container">
+      <h2 class="section-title">🔧 Os Serviços do Lab</h2>
+
+      <div class="service-card s3">
+        <div class="service-header">
+          <div class="service-icon">🪣</div>
+          <div>
+            <div class="service-name" style="color:var(--green)">Amazon S3</div>
+            <div class="service-tagline">Simple Storage Service — Armazenamento de objetos</div>
+          </div>
+        </div>
+        <div class="service-body">
+          O S3 é o ponto de entrada do lab. Quando o arquivo <code>pedidos.json</code> é carregado, o S3 dispara uma notificação de evento para o SNS. Ele não processa nada — apenas armazena e avisa. No lab, a Lambda lê o arquivo diretamente do S3 usando o boto3, pois o conteúdo do arquivo ultrapassa o limite de mensagem do SNS/SQS.
+        </div>
+      </div>
+
+      <div class="service-card sns">
+        <div class="service-header">
+          <div class="service-icon">📣</div>
+          <div>
+            <div class="service-name" style="color:var(--pink)">Amazon SNS</div>
+            <div class="service-tagline">Simple Notification Service — Pub/Sub</div>
+          </div>
+        </div>
+        <div class="service-body">
+          O SNS funciona como um megafone: publica a notificação de upload para todos os subscribers cadastrados. No lab, ele tem uma fila SQS como subscriber. Em produção real, poderia ter e-mail, SMS, HTTP endpoint e múltiplas filas SQS ao mesmo tempo (fan-out). Limite: 256 KB por mensagem.
+        </div>
+      </div>
+
+      <div class="service-card sqs">
+        <div class="service-header">
+          <div class="service-icon">📬</div>
+          <div>
+            <div class="service-name" style="color:var(--purple)">Amazon SQS</div>
+            <div class="service-tagline">Simple Queue Service — Fila de mensagens</div>
+          </div>
+        </div>
+        <div class="service-body">
+          A fila SQS é o buffer entre o SNS e a Lambda. Ela garante que a mensagem não seja perdida se a Lambda falhar. O <strong>Visibility Timeout</strong> esconde a mensagem enquanto a Lambda processa; se a Lambda falhar antes de deletar, a mensagem fica visível novamente para reprocessamento automático.
+        </div>
+      </div>
+
+      <div class="service-card lambda">
+        <div class="service-header">
+          <div class="service-icon">⚡</div>
+          <div>
+            <div class="service-name" style="color:var(--orange)">AWS Lambda</div>
+            <div class="service-tagline">Compute serverless — Execução sob demanda</div>
+          </div>
+        </div>
+        <div class="service-body">
+          A Lambda é o cérebro do processamento. Ela: (1) recebe o evento da SQS, (2) extrai o bucket/key do arquivo, (3) baixa o JSON do S3, (4) itera sobre cada pedido, (5) salva no DynamoDB. Roda em Python 3.12, sem servidor para gerenciar. O <strong>Cold Start</strong> pode adicionar latência na primeira execução após inatividade.
+        </div>
+      </div>
+
+      <div class="service-card dynamo">
+        <div class="service-header">
+          <div class="service-icon">🗄️</div>
+          <div>
+            <div class="service-name" style="color:var(--teal)">Amazon DynamoDB</div>
+            <div class="service-tagline">NoSQL totalmente gerenciado — Chave-valor e documentos</div>
+          </div>
+        </div>
+        <div class="service-body">
+          O DynamoDB é o destino final dos pedidos processados. No lab, a tabela <code>lab-pedidos</code> usa <code>pedido_id</code> como partition key. É serverless, escala automaticamente e cobra por leitura/escrita. Cuidado com tipos: usa <code>Decimal</code> para números decimais, nunca <code>float</code>.
+        </div>
+      </div>
+
+      <!-- Comparison Table -->
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;margin-top:28px;">Quando usar qual padrão?</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Padrão</th>
+              <th>Quando usar</th>
+              <th>Exemplo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span style="color:var(--purple)">SQS → Lambda</span></td>
+              <td>Um único consumidor, sem fanout necessário</td>
+              <td>Processamento simples de formulários</td>
+            </tr>
+            <tr>
+              <td><span style="color:var(--pink)">SNS → Lambda</span></td>
+              <td>Notificação síncrona sem buffer</td>
+              <td>Alertas de monitoramento</td>
+            </tr>
+            <tr>
+              <td><span style="color:var(--orange)">S3 → SNS → SQS → Lambda</span></td>
+              <td>Arquivo grande + múltiplos consumidores + resiliência</td>
+              <td>Processamento de pedidos (este lab!)</td>
+            </tr>
+            <tr>
+              <td><span style="color:var(--green)">S3 → Lambda</span></td>
+              <td>Trigger direto, arquivo pequeno, sem fanout</td>
+              <td>Redimensionar imagens no upload</td>
+            </tr>
+            <tr>
+              <td><span style="color:var(--teal)">SNS → SQS (múltiplas)</span></td>
+              <td>Fan-out para microsserviços independentes</td>
+              <td>Estoque + Financeiro + Logística</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Extra cards -->
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-icon">⏱️</div>
+          <div class="card-title">Visibility Timeout</div>
+          <div class="card-body">Enquanto a Lambda processa, a mensagem fica "invisível" na fila. Se a Lambda confirmar (delete), a mensagem some. Se falhar, ela volta para a fila automaticamente após o timeout — garantindo reprocessamento sem perda de dados.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">❄️</div>
+          <div class="card-title">Cold Start Lambda</div>
+          <div class="card-body">A primeira invocação após um período de inatividade demora mais porque a AWS precisa provisionar o container. Em produção, use <strong>Provisioned Concurrency</strong> para workloads sensíveis à latência.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔐</div>
+          <div class="card-title">IAM — Permissões Mínimas</div>
+          <div class="card-body">A role da Lambda deve ter apenas o necessário: <code>s3:GetObject</code> no bucket específico, <code>dynamodb:PutItem</code> na tabela específica, e <code>sqs:ReceiveMessage</code> + <code>sqs:DeleteMessage</code> na fila.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 3: PASSO A PASSO ===================== -->
+  <section id="passo-a-passo" class="section">
+    <div class="container">
+      <h2 class="section-title">🚀 Passo a Passo do Lab</h2>
+
+      <div class="alert alert-blue">
+        <strong>📋 Pré-requisito</strong>
+        <p>Você precisa ter a AWS CLI configurada (<code>aws configure</code>), permissões para criar recursos S3/SNS/SQS/Lambda/DynamoDB, e o PowerShell ou terminal bash disponível.</p>
+      </div>
+
+      <!-- Step 1 -->
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>Empacotar o código Lambda</h3>
+          <p>Crie o arquivo zip com o código Python da função Lambda. Execute no PowerShell dentro da pasta do lab:</p>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+            <pre>Compress-Archive -Path lambda_function.py -DestinationPath lambda.zip -Force</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Executar o script de deploy</h3>
+          <p>O script <code>deploy.sh</code> cria todos os recursos AWS automaticamente: bucket S3, tópico SNS, fila SQS, role IAM, função Lambda e a tabela DynamoDB.</p>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+            <pre>./deploy.sh</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Fazer upload do arquivo de pedidos</h3>
+          <p>Copie o arquivo <code>pedidos.json</code> para o bucket S3. Esse upload é o gatilho que inicia todo o fluxo de eventos. Substitua <code>SEU-BUCKET</code> pelo nome gerado no deploy:</p>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+            <pre>aws s3 cp pedidos.json s3://SEU-BUCKET/pedidos.json</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h3>Verificar os pedidos no DynamoDB</h3>
+          <p>Aguarde cerca de 10 segundos e consulte a tabela para confirmar que os pedidos foram gravados com sucesso:</p>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+            <pre>aws dynamodb scan --table-name lab-pedidos</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h3>Acompanhar os logs da Lambda em tempo real</h3>
+          <p>Para monitorar o processamento ao vivo, use o CloudWatch Logs. O <code>--follow</code> mantém o terminal aberto aguardando novos logs:</p>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+            <pre>aws logs tail /aws/lambda/lambda-processa-pedidos --follow</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 6 -->
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <h3>Limpar todos os recursos</h3>
+          <p>Ao terminar o lab, execute o script de limpeza para deletar todos os recursos criados e evitar cobranças desnecessárias na sua conta AWS:</p>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+            <pre>./cleanup.sh</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Behind the scenes code block -->
+      <h3 style="font-size:15px;font-weight:700;margin:28px 0 12px;">🔍 O que acontece nos bastidores?</h3>
+      <div class="code-wrap">
+        <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+        <pre><span class="c-dim"># 1. Você faz upload do arquivo</span>
+<span class="c-green">aws s3 cp pedidos.json s3://meu-bucket/pedidos.json</span>
+
+<span class="c-dim"># 2. S3 detecta o evento PutObject e publica no SNS</span>
+<span class="c-pink">SNS.publish(</span>
+  <span class="c-dim">TopicArn</span>=<span class="c-orange">"arn:aws:sns:us-east-1:123:lab-topic"</span>,
+  <span class="c-dim">Message</span>=<span class="c-orange">"{bucket: 'meu-bucket', key: 'pedidos.json'}"</span>
+<span class="c-pink">)</span>
+
+<span class="c-dim"># 3. SNS entrega a mensagem para a fila SQS</span>
+<span class="c-purple">SQS ← mensagem com referência ao arquivo S3</span>
+
+<span class="c-dim"># 4. Lambda é acionada pela SQS (event source mapping)</span>
+<span class="c-orange">def lambda_handler(event, context):</span>
+  <span class="c-blue">body = json.loads(event['Records'][0]['body'])</span>
+
+<span class="c-dim"># 5. Lambda baixa o arquivo diretamente do S3</span>
+<span class="c-orange">  obj = s3.get_object(Bucket=bucket, Key=key)</span>
+<span class="c-orange">  pedidos = json.loads(obj['Body'].read())</span>
+
+<span class="c-dim"># 6. Lambda processa cada pedido (float → Decimal!)</span>
+<span class="c-orange">  for pedido in pedidos:</span>
+<span class="c-orange">    pedido['preco'] = Decimal(str(pedido['preco']))</span>
+
+<span class="c-dim"># 7. Lambda salva cada pedido no DynamoDB</span>
+<span class="c-teal">    table.put_item(Item=pedido)</span>
+
+<span class="c-dim"># 8. Lambda confirma e a mensagem é deletada da SQS</span>
+<span class="c-purple">SQS.delete_message(ReceiptHandle=...)</span>
+</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 4: DESAFIOS ===================== -->
+  <section id="desafios" class="section">
+    <div class="container">
+      <h2 class="section-title">🏆 Desafios para Praticar</h2>
+
+      <!-- Challenge 1 -->
+      <div class="challenge-card">
+        <div class="challenge-header">
+          <span class="challenge-num">1️⃣</span>
+          <span class="badge badge-green">INICIANTE</span>
+          <span class="challenge-title">Adicionar um novo campo ao pedido</span>
+        </div>
+        <div class="challenge-body">
+          Edite o arquivo <code>pedidos.json</code> e adicione um novo campo em todos os pedidos, por exemplo <code>"categoria": "eletronicos"</code>. Faça o upload novamente e verifique se o novo campo aparece nos itens do DynamoDB após o processamento.
+          <br><br>
+          <strong>O que você aprende:</strong> O DynamoDB é schemaless — você pode adicionar campos livremente sem alterar a estrutura da tabela.
+        </div>
+        <div class="hint-box">
+          <strong>💡 Dica:</strong> Use <code>aws dynamodb scan --table-name lab-pedidos --output table</code> para visualizar os dados de forma mais legível no terminal.
+        </div>
+      </div>
+
+      <!-- Challenge 2 -->
+      <div class="challenge-card">
+        <div class="challenge-header">
+          <span class="challenge-num">2️⃣</span>
+          <span class="badge badge-yellow">INTERMEDIÁRIO</span>
+          <span class="challenge-title">Processar múltiplos arquivos</span>
+        </div>
+        <div class="challenge-body">
+          Crie um segundo arquivo chamado <code>pedidos2.json</code> com 3 pedidos diferentes (use IDs únicos como <code>P004</code>, <code>P005</code>, <code>P006</code>). Faça o upload para o mesmo bucket e verifique se todos os pedidos de ambos os arquivos aparecem no DynamoDB.
+          <br><br>
+          <strong>O que você aprende:</strong> Cada upload é um evento independente. O fluxo S3→SNS→SQS→Lambda processa cada arquivo separadamente de forma assíncrona.
+        </div>
+        <div class="hint-box">
+          <strong>💡 Dica:</strong> Execute <code>aws dynamodb scan --table-name lab-pedidos --select COUNT</code> para contar o total de itens na tabela rapidamente.
+        </div>
+      </div>
+
+      <!-- Challenge 3 -->
+      <div class="challenge-card">
+        <div class="challenge-header">
+          <span class="challenge-num">3️⃣</span>
+          <span class="badge badge-orange">AVANÇADO</span>
+          <span class="challenge-title">Adicionar uma Dead Letter Queue (DLQ)</span>
+        </div>
+        <div class="challenge-body">
+          Configure uma Dead Letter Queue na fila SQS principal para capturar mensagens que falharem após 3 tentativas de processamento. Crie uma segunda fila SQS chamada <code>lab-pedidos-dlq</code> e configure a fila principal para redirecionar mensagens problemáticas para ela automaticamente.
+          <br><br>
+          <strong>O que você aprende:</strong> A DLQ é um pattern essencial de resiliência. Em vez de perder mensagens que causam erros, você as isola para análise e reprocessamento manual.
+          <br><br>
+
+          <strong>📋 Passo a passo para configurar:</strong>
+          <br><br>
+          <strong>1. Criar a fila DLQ:</strong>
+          <div style="background:#010409;border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0;font-family:monospace;font-size:12px;color:#c9d1d9">
+            aws sqs create-queue --queue-name lab-pedidos-dlq --region us-east-1
+          </div>
+
+          <strong>2. Configurar o RedrivePolicy na fila principal:</strong><br>
+          Este é o passo essencial — sem ele a DLQ existe mas nunca recebe nada. O <code>RedrivePolicy</code> diz ao SQS: "após <code>maxReceiveCount</code> tentativas fracassadas, mova a mensagem para esta DLQ". Execute o comando abaixo com seu Account ID:
+          <div style="background:#010409;border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0;font-family:monospace;font-size:12px;color:#c9d1d9">
+            aws sqs set-queue-attributes \<br>
+            &nbsp;&nbsp;--queue-url "https://sqs.us-east-1.amazonaws.com/<span style="color:#F4C430">SEU-ACCOUNT-ID</span>/lab-pedidos-queue" \<br>
+            &nbsp;&nbsp;--attributes "{\"RedrivePolicy\":\"{\\\"deadLetterTargetArn\\\":\\\"arn:aws:sqs:us-east-1:<span style="color:#F4C430">SEU-ACCOUNT-ID</span>:lab-pedidos-dlq\\\",\\\"maxReceiveCount\\\":\\\"2\\\"}\"}" \<br>
+            &nbsp;&nbsp;--region us-east-1
+          </div>
+
+          <strong>3. Confirmar que o RedrivePolicy foi aplicado:</strong><br>
+          Se o comando anterior não retornar erro, confirme que o redrive foi gravado corretamente — a fila precisa mostrar o atributo <code>RedrivePolicy</code> na saída:
+          <div style="background:#010409;border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0;font-family:monospace;font-size:12px;color:#c9d1d9">
+            aws sqs get-queue-attributes \<br>
+            &nbsp;&nbsp;--queue-url "https://sqs.us-east-1.amazonaws.com/<span style="color:#F4C430">SEU-ACCOUNT-ID</span>/lab-pedidos-queue" \<br>
+            &nbsp;&nbsp;--attribute-names RedrivePolicy \<br>
+            &nbsp;&nbsp;--region us-east-1
+          </div>
+          Se <code>RedrivePolicy</code> aparecer no output com o ARN da DLQ e o <code>maxReceiveCount</code>, a configuração está correta. Se o output vier vazio, o passo 2 não foi aplicado — repita-o.
+          <br><br>
+          ⚠️ <strong>Atenção:</strong> Se a fila principal não tiver o <code>RedrivePolicy</code> configurado, a mensagem ficará sendo recebida e devolvida à fila indefinidamente, nunca irá para a DLQ, independentemente de quantas vezes falhar.
+          <br><br>
+          <strong>🔥 Como provocar uma falha para testar a DLQ:</strong><br>
+          A DLQ só recebe mensagens quando a Lambda <em>lança uma exceção não tratada</em>. No código atual, erros são capturados internamente e a mensagem é deletada mesmo com falha. Você precisa forçar uma falha real. Existem duas formas:
+          <br><br>
+
+          <strong>Opção A — Arquivo JSON inválido (mais fácil):</strong><br>
+          Crie um arquivo com JSON malformado para que o <code>json.loads()</code> da Lambda quebre com exceção não capturada:
+          <div style="background:#010409;border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0;font-family:monospace;font-size:12px;color:#c9d1d9;white-space:pre">
+echo "isso nao e um json valido!!!" > pedidos-invalido.json
+aws s3 cp pedidos-invalido.json s3://SEU-BUCKET/pedidos-invalido.json</div>
+
+          <strong>Opção B — Apagar a tabela DynamoDB (força erro no put_item):</strong><br>
+          Apague a tabela <code>lab-pedidos</code> no console enquanto a Lambda está rodando. Ela vai falhar ao tentar gravar — e a mensagem vai ser recolocada na fila pelo SQS automaticamente.
+          <br><br>
+
+          <strong>⚙️ Para ver a mensagem "morrer" e ir para a DLQ:</strong><br>
+          Com <code>maxReceiveCount=3</code>, a Lambda precisa falhar 3 vezes na mesma mensagem. O SQS só redireciona para a DLQ após a 3ª falha. Para acelerar o teste, antes de enviar o arquivo inválido, <strong>desative o trigger Lambda</strong> e envie a mensagem manualmente para a fila — assim você controla quantas vezes a mensagem é recebida:
+          <div style="background:#010409;border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0;font-family:monospace;font-size:12px;color:#c9d1d9">
+            <span style="color:#51CF66"># 1. Verificar mensagens na DLQ (deve aparecer após as 3 falhas)</span><br>
+            aws sqs get-queue-attributes \<br>
+            &nbsp;&nbsp;--queue-url https://sqs.us-east-1.amazonaws.com/SEU-ACCOUNT-ID/lab-pedidos-dlq \<br>
+            &nbsp;&nbsp;--attribute-names ApproximateNumberOfMessages \<br>
+            &nbsp;&nbsp;--region us-east-1<br><br>
+            <span style="color:#51CF66"># 2. Ler o conteúdo da mensagem que foi para a DLQ</span><br>
+            aws sqs receive-message \<br>
+            &nbsp;&nbsp;--queue-url https://sqs.us-east-1.amazonaws.com/SEU-ACCOUNT-ID/lab-pedidos-dlq \<br>
+            &nbsp;&nbsp;--region us-east-1
+          </div>
+
+          <strong>O que você verá na DLQ:</strong> a mensagem original intacta — o evento S3/SNS completo que causou a falha, incluindo o nome do arquivo problemático. Em produção, uma equipe de suporte usaria essa mensagem para investigar a causa raiz e reprocessar manualmente após corrigir o problema.
+        </div>
+      </div>
+
+      <!-- Challenge 4 -->
+      <div class="challenge-card">
+        <div class="challenge-header">
+          <span class="challenge-num">4️⃣</span>
+          <span class="badge badge-purple">EXPERT</span>
+          <span class="challenge-title">Notificação por e-mail via SNS</span>
+        </div>
+        <div class="challenge-body">
+          Adicione um segundo subscriber no tópico SNS que envia um e-mail sempre que um novo arquivo de pedidos chega. Enquanto a fila SQS continua alimentando a Lambda (processamento automático), o e-mail serve como notificação para a equipe de operações.
+          <br><br>
+          <strong>O que você aprende:</strong> Este é o padrão fan-out em ação: um único publisher (SNS) notificando múltiplos subscribers simultaneamente, cada um fazendo algo diferente com o mesmo evento.
+        </div>
+        <div class="hint-box">
+          <strong>💡 Dica:</strong> No console AWS, vá em SNS → seu tópico → <em>Create subscription</em> → Protocol: <code>Email</code> → insira seu e-mail. Confirme o e-mail de verificação que a AWS enviará antes de testar.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 5: QUIZ ===================== -->
+  <section id="quiz" class="section">
+    <div class="container">
+      <h2 class="section-title">🧠 Quiz — Teste seu Conhecimento</h2>
+
+      <!-- Q1 -->
+      <div class="quiz-card">
+        <div class="quiz-q">1. Por que o S3 não envia o conteúdo do arquivo diretamente na mensagem SNS?</div>
+        <div class="quiz-options">
+          <button class="quiz-option" onclick="answerQuiz(this, false, 'fb1', '', 'Incorreto. O SNS processa mensagens de texto, mas o problema aqui é o limite de tamanho, não a ausência de suporte a texto.')">A) Porque o SNS não aceita arquivos de texto</button>
+          <button class="quiz-option" onclick="answerQuiz(this, true, 'fb1', 'Correto! SNS e SQS têm limite de 256 KB por mensagem. O arquivo de pedidos pode ser muito maior que isso. Por isso, o S3 envia apenas a referência (bucket + key) e a Lambda busca o conteúdo diretamente no S3.', '')">B) Porque SNS e SQS têm limite de 256 KB — o arquivo pode ser maior</button>
+          <button class="quiz-option" onclick="answerQuiz(this, false, 'fb1', '', 'Incorreto. O DynamoDB recebe os dados processados pela Lambda, não diretamente do SNS.')">C) Porque o DynamoDB precisa receber o arquivo diretamente</button>
+          <button class="quiz-option" onclick="answerQuiz(this, false, 'fb1', '', 'Incorreto. A razão principal é o limite de 256 KB, não questões de segurança ou criptografia.')">D) Por questões de segurança e criptografia</button>
+        </div>
+        <div class="quiz-feedback" id="fb1"></div>
+      </div>
+
+      <!-- Q2 -->
+      <div class="quiz-card">
+        <div class="quiz-q">2. O que acontece com uma mensagem SQS se a Lambda falhar durante o processamento?</div>
+        <div class="quiz-options">
+          <button class="quiz-option" onclick="answerQuiz(this, false, 'fb2', '', 'Incorreto. A mensagem só é deletada quando a Lambda confirma explicitamente o processamento bem-sucedido.')">A) A mensagem é deletada automaticamente da fila</button>
+          <button class="quiz-option" onclick="answerQuiz(this, false, 'fb2', '', 'Incorreto. O SNS já fez seu trabalho ao entregar para a SQS. A mensagem não volta para o SNS.')">B) A mensagem é enviada de volta para o SNS</button>
+          <button class="quiz-option" onclick="answerQuiz(this, true, 'fb2', 'Correto! Durante o processamento, a mensagem fica invisível (Visibility Timeout). Se a Lambda falhar sem deletar a mensagem, o timeout expira e a mensagem volta a ficar visível na fila para ser reprocessada automaticamente.', '')">C) A mensagem fica invisível e depois volta para a fila para reprocessamento</button>
+          <button class="quiz-option" onclick="answerQuiz(this, false, 'fb2', '', 'Incorreto. A Lambda não é reiniciada automaticamente pela SQS — ela só é invocada novamente quando a mensagem volta à fila.')">D) A Lambda é reiniciada imediatamente pela AWS</button>
+        </div>
+        <div class="quiz-feedback" id="fb2"></div>
+      </div>
+
+      <!-- Q3 -->
+      <div class="quiz-card">
+        <div class="quiz-q">3. Qual é o nome do padrão em que o SNS distribui um evento para múltiplas filas SQS ao mesmo tempo?</div>
+        <div class="quiz-options">
+          <button class="quiz-option" onclick="answerQuiz(this, false, 'fb3', '', 'Incorreto. Load Balancing distribui carga entre instâncias — não é o padrão de distribuição de mensagens para múltiplos consumers.')">A) Load Balancing</button>
+          <button class="quiz-option" onclick="answerQuiz(this, true, 'fb3', 'Correto! Fan-out é o padrão em que um publisher (SNS) envia a mesma mensagem para múltiplos subscribers (filas SQS, e-mails, endpoints HTTP) simultaneamente. Perfeito para microsserviços independentes que precisam reagir ao mesmo evento.', '')">B) Fan-out</button>
+          <button class="quiz-option" onclick="answerQuiz(this, false, 'fb3', '', 'Incorreto. Round Robin é um algoritmo de agendamento/distribuição de carga, não um padrão de mensageria.')">C) Round Robin</button>
+          <button class="quiz-option" onclick="answerQuiz(this, false, 'fb3', '', 'Incorreto. Dead Letter é o padrão para capturar mensagens que falharam — não para distribuição a múltiplos consumers.')">D) Dead Letter</button>
+        </div>
+        <div class="quiz-feedback" id="fb3"></div>
+      </div>
+
+      <!-- Q4 -->
+      <div class="quiz-card">
+        <div class="quiz-q">4. O que é o "Cold Start" da AWS Lambda?</div>
+        <div class="quiz-options">
+          <button class="quiz-option" onclick="answerQuiz(this, false, 'fb4', '', 'Incorreto. Falta de memória resulta em erro de execução, não em Cold Start.')">A) Um erro que ocorre quando a Lambda não tem memória suficiente</button>
+          <button class="quiz-option" onclick="answerQuiz(this, true, 'fb4', 'Correto! Cold Start é o tempo extra que a AWS leva para provisionar e inicializar um novo container na primeira invocação (ou após longo período de inatividade). Para funções sensíveis à latência, use Provisioned Concurrency para manter containers "quentes".', '')">B) O tempo extra de inicialização na primeira execução após inatividade</button>
+          <button class="quiz-option" onclick="answerQuiz(this, false, 'fb4', '', 'Incorreto. Timeout é quando a Lambda excede o tempo máximo de execução configurado (até 15 min) — diferente de Cold Start.')">C) Quando a Lambda cancela a execução por timeout</button>
+          <button class="quiz-option" onclick="answerQuiz(this, false, 'fb4', '', 'Incorreto. O custo da Lambda é cobrado por tempo de execução e número de invocações — não há cobrança de "criação".')">D) O custo cobrado ao criar a função Lambda</button>
+        </div>
+        <div class="quiz-feedback" id="fb4"></div>
+      </div>
+
+      <!-- Q5 -->
+      <div class="quiz-card">
+        <div class="quiz-q">5. Por que o boto3 rejeita valores <code>float</code> ao salvar itens no DynamoDB?</div>
+        <div class="quiz-options">
+          <button class="quiz-option" onclick="answerQuiz(this, false, 'fb5', '', 'Incorreto. O DynamoDB aceita tipos numéricos — o problema é específico ao tipo float do Python, não ao DynamoDB em geral.')">A) Porque o DynamoDB só aceita strings como tipo de dado</button>
+          <button class="quiz-option" onclick="answerQuiz(this, false, 'fb5', '', 'Incorreto. O problema não é de espaço em disco, mas de precisão matemática.')">B) Porque float consome mais espaço em disco no DynamoDB</button>
+          <button class="quiz-option" onclick="answerQuiz(this, true, 'fb5', 'Correto! Floats em Python (e em qualquer linguagem) têm imprecisão binária inerente. Por exemplo, 0.1 + 0.2 ≠ 0.3 em ponto flutuante. Para valores monetários isso é crítico. O boto3 exige Decimal() para garantir precisão exata, protegendo dados financeiros.', '')">C) Float tem imprecisão binária que pode corromper valores numéricos, especialmente monetários</button>
+          <button class="quiz-option" onclick="answerQuiz(this, false, 'fb5', '', 'Incorreto. Essa limitação existe em todas as regiões AWS — é uma proteção de precisão numérica, não uma restrição regional.')">D) É uma limitação específica da região us-east-1</button>
+        </div>
+        <div class="quiz-feedback" id="fb5"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    Feito com <span>❤️</span> para sua jornada AWS | <span>Cloud Practitioner Lab</span>
+  </footer>
+
+  <!-- JAVASCRIPT -->
+  <script>
+    function showTab(id, e) {
+      document.querySelectorAll('.section').forEach(function(s) {
+        s.classList.remove('active');
+      });
+      document.querySelectorAll('.tab-btn').forEach(function(b) {
+        b.classList.remove('active');
+      });
+      document.getElementById(id).classList.add('active');
+      if (e && e.target) {
+        e.target.classList.add('active');
+      }
+    }
+
+    function copyCode(btn) {
+      var pre = btn.nextElementSibling;
+      var text = pre.innerText || pre.textContent;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(function() {
+          btn.textContent = '✓ Copiado';
+          setTimeout(function() { btn.textContent = 'Copiar'; }, 2000);
+        }).catch(function() {
+          fallbackCopy(text, btn);
+        });
+      } else {
+        fallbackCopy(text, btn);
+      }
+    }
+
+    function fallbackCopy(text, btn) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.textContent = '✓ Copiado';
+      setTimeout(function() { btn.textContent = 'Copiar'; }, 2000);
+    }
+
+    function answerQuiz(btn, correct, feedbackId, correctFb, wrongFb) {
+      var card = btn.closest('.quiz-card');
+      card.querySelectorAll('.quiz-option').forEach(function(o) {
+        o.classList.add('disabled');
+        o.disabled = true;
+      });
+      var feedback = document.getElementById(feedbackId);
+      if (correct) {
+        btn.classList.add('correct');
+        feedback.className = 'quiz-feedback show correct-fb';
+        feedback.innerHTML = '✅ ' + correctFb;
+      } else {
+        btn.classList.add('wrong');
+        feedback.className = 'quiz-feedback show wrong-fb';
+        feedback.innerHTML = '❌ ' + wrongFb;
+      }
+    }
+  </script>
+
+</body>
+</html>

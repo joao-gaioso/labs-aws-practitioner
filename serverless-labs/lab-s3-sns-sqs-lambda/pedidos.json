@@ -1,0 +1,37 @@
+[
+  {
+    "cliente": "Rafael Mendes",
+    "produto": "Cadeira Gamer",
+    "quantidade": 1,
+    "preco": 1250.00,
+    "categoria": "Móveis"
+  },
+  {
+    "cliente": "Juliana Alves",
+    "produto": "Webcam Full HD",
+    "quantidade": 2,
+    "preco": 189.90,
+    "categoria": "Periféricos"
+  },
+  {
+    "cliente": "Thiago Martins",
+    "produto": "SSD 1TB NVMe",
+    "quantidade": 1,
+    "preco": 420.00,
+    "categoria": "Armazenamento"
+  },
+  {
+    "cliente": "Camila Nunes",
+    "produto": "Tablet Samsung",
+    "quantidade": 1,
+    "preco": 2100.00,
+    "categoria": "Eletrônicos"
+  },
+  {
+    "cliente": "Bruno Oliveira",
+    "produto": "Hub USB-C 7 portas",
+    "quantidade": 3,
+    "preco": 149.99,
+    "categoria": "Periféricos"
+  }
+]
