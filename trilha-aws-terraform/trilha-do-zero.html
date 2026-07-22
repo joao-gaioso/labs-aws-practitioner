@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trilha AWS do Zero — Terraform | ShopCloud</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:     #0d1117; --bg2: #161b22; --bg3: #21262d;
+  --border: #30363d; --text: #e6edf3; --dim:  #8b949e;
+  --orange: #FF9900; --green: #3fb950; --blue: #58a6ff;
+  --purple: #a371f7; --pink:  #f778ba; --teal: #39d0b0;
+  --yellow: #e3b341; --red:   #f85149;
+}
+
+body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; }
+
+/* HERO */
+.hero { position:relative; padding:80px 24px 60px; text-align:center; overflow:hidden; }
+.hero-bg {
+  position:absolute; inset:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 0%,  rgba(255,153,0,.13)  0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 0%,  rgba(88,166,255,.1)  0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 50% 100%,rgba(163,113,247,.08) 0%, transparent 60%);
+  animation: bgPulse 8s ease-in-out infinite alternate;
+}
+@keyframes bgPulse { from{opacity:.7} to{opacity:1} }
+.hero-content { position:relative; z-index:1; max-width:720px; margin:0 auto; }
+
+.hero-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  background:rgba(255,153,0,.12); border:1px solid rgba(255,153,0,.35);
+  color:var(--orange); padding:6px 16px; border-radius:20px;
+  font-size:12px; font-weight:700; letter-spacing:.8px; text-transform:uppercase;
+  margin-bottom:24px; animation:fadeDown .6s ease both;
+}
+.hero h1 { font-size:clamp(2rem,5vw,3.2rem); font-weight:900; line-height:1.15; margin-bottom:16px; animation:fadeUp .7s ease both; }
+.hero h1 .grad { background:linear-gradient(135deg,var(--orange) 0%,var(--yellow) 50%,var(--pink) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero p { font-size:1.05rem; color:var(--dim); line-height:1.7; margin-bottom:40px; animation:fadeUp .8s ease both; }
+.hero-stats { display:flex; justify-content:center; gap:32px; flex-wrap:wrap; animation:fadeUp .9s ease both; }
+.stat-num   { font-size:1.8rem; font-weight:900; color:var(--orange); line-height:1; }
+.stat-label { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px; margin-top:4px; }
+
+@keyframes fadeDown { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeUp   { from{opacity:0;transform:translateY(16px)}  to{opacity:1;transform:translateY(0)} }
+
+/* TABS */
+.tabs { display:flex; justify-content:center; flex-wrap:wrap; gap:8px; padding:20px 24px; background:var(--bg2); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; }
+.tab-btn { background:var(--bg3); border:1px solid var(--border); color:var(--dim); padding:8px 18px; border-radius:8px; cursor:pointer; font-family:'Inter',sans-serif; font-size:13px; font-weight:600; transition:all .2s; }
+.tab-btn:hover  { border-color:var(--orange); color:var(--orange); }
+.tab-btn.active { background:var(--orange); border-color:var(--orange); color:#000; font-weight:700; }
+
+/* LAYOUT */
+.container { max-width:980px; margin:0 auto; padding:40px 24px; }
+.section   { display:none; animation:fadeUp .35s ease both; }
+.section.active { display:block; }
+.section-title { font-size:1.4rem; font-weight:800; margin-bottom:8px; }
+.section-sub { color:var(--dim); font-size:14px; line-height:1.6; margin-bottom:32px; }
+
+/* TIMELINE */
+.timeline { position:relative; padding-left:32px; }
+.timeline::before { content:''; position:absolute; left:10px; top:0; bottom:0; width:2px; background:linear-gradient(to bottom,var(--orange),var(--blue),var(--purple),var(--teal),var(--green)); }
+.tl-item { position:relative; margin-bottom:36px; animation:fadeUp .5s ease both; }
+.tl-item:nth-child(1){animation-delay:.1s} .tl-item:nth-child(2){animation-delay:.2s}
+.tl-item:nth-child(3){animation-delay:.3s} .tl-item:nth-child(4){animation-delay:.4s}
+.tl-item:nth-child(5){animation-delay:.5s}
+.tl-dot { position:absolute; left:-26px; top:20px; width:16px; height:16px; border-radius:50%; border:2px solid var(--bg); box-shadow:0 0 0 3px var(--bg); animation:dotPulse 2s ease-in-out infinite; }
+@keyframes dotPulse { 0%,100%{box-shadow:0 0 0 3px var(--bg),0 0 0 5px transparent} 50%{box-shadow:0 0 0 3px var(--bg),0 0 0 8px rgba(255,153,0,.2)} }
+.tl-card { background:var(--bg2); border:1px solid var(--border); border-radius:14px; padding:24px; transition:transform .2s,box-shadow .2s,border-color .2s; }
+.tl-card:hover { transform:translateX(4px); box-shadow:0 8px 32px rgba(0,0,0,.4); }
+.tl-header { display:flex; align-items:flex-start; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
+.tl-icon { font-size:2rem; width:56px; height:56px; border-radius:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; border:2px solid; }
+.tl-meta { flex:1; min-width:200px; }
+.tl-num  { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; margin-bottom:4px; }
+.tl-title { font-size:1.1rem; font-weight:800; margin-bottom:4px; }
+.tl-context { font-size:12px; color:var(--dim); font-style:italic; }
+.tl-badges { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.badge { padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:.3px; border:1px solid; }
+.tl-body { font-size:13px; color:var(--dim); line-height:1.7; margin-bottom:16px; }
+.tl-tasks { list-style:none; display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+.tl-tasks li { display:flex; align-items:flex-start; gap:8px; font-size:13px; }
+.tl-tasks li::before { content:'→'; color:var(--orange); flex-shrink:0; margin-top:1px; }
+.tl-goal { background:rgba(255,153,0,.07); border:1px solid rgba(255,153,0,.2); border-radius:8px; padding:12px 16px; font-size:12px; line-height:1.6; }
+.tl-goal strong { color:var(--orange); }
+
+/* CARDS / GRID */
+.grid-2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-bottom:24px; }
+.grid-3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-bottom:24px; }
+.card { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:20px; transition:transform .2s,box-shadow .2s; }
+.card:hover { transform:translateY(-4px); box-shadow:0 8px 24px rgba(0,0,0,.4); }
+.card-icon  { font-size:1.6rem; margin-bottom:10px; }
+.card-title { font-size:14px; font-weight:700; margin-bottom:6px; }
+.card-body  { font-size:13px; color:var(--dim); line-height:1.6; }
+
+/* ALERT */
+.alert { border-radius:10px; padding:14px 18px; font-size:13px; line-height:1.7; margin-bottom:20px; border-left:3px solid; }
+.alert-orange { background:rgba(255,153,0,.07);   border-color:var(--orange); }
+.alert-blue   { background:rgba(88,166,255,.07);  border-color:var(--blue);   }
+.alert-green  { background:rgba(63,185,80,.07);   border-color:var(--green);  }
+.alert-purple { background:rgba(163,113,247,.07); border-color:var(--purple); }
+.alert-teal   { background:rgba(57,208,176,.07);  border-color:var(--teal);   }
+.alert strong { font-weight:700; }
+.alert p { color:var(--dim); margin-top:4px; }
+
+/* FORMAT CARD */
+.format-card { background:var(--bg2); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:20px; }
+.format-header { padding:16px 20px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--border); background:rgba(255,255,255,.02); }
+.format-icon  { font-size:1.4rem; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.format-title { font-size:15px; font-weight:700; }
+.format-sub   { font-size:12px; color:var(--dim); }
+.format-body  { padding:16px 20px; }
+
+/* TABLE */
+.table-wrap { overflow-x:auto; margin-bottom:24px; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { background:var(--bg3); color:var(--orange); padding:10px 14px; text-align:left; border-bottom:2px solid var(--border); font-weight:700; }
+td { padding:10px 14px; border-bottom:1px solid var(--border); color:var(--dim); vertical-align:top; }
+tr:hover td { background:rgba(255,255,255,.02); color:var(--text); }
+
+/* CODE */
+.code-wrap { position:relative; margin:8px 0 16px; }
+pre { background:#010409; border:1px solid var(--border); border-radius:10px; padding:16px 16px 16px 16px; overflow-x:auto; font-family:'Fira Code',monospace; font-size:12px; line-height:1.8; color:var(--text); }
+.copy-btn { position:absolute; top:8px; right:8px; background:var(--bg3); border:1px solid var(--border); color:var(--dim); padding:4px 10px; border-radius:6px; font-size:11px; cursor:pointer; font-family:'Inter',sans-serif; transition:all .2s; z-index:2; }
+.copy-btn:hover { border-color:var(--orange); color:var(--orange); }
+
+/* color helpers */
+.c-orange{color:var(--orange)} .c-green{color:var(--green)}   .c-blue{color:var(--blue)}
+.c-purple{color:var(--purple)} .c-pink{color:var(--pink)}     .c-teal{color:var(--teal)}
+.c-yellow{color:var(--yellow)} .c-dim{color:var(--dim)}       .c-red{color:var(--red)}
+
+/* PROGRESS */
+.progress-row { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.progress-label { font-size:12px; color:var(--dim); min-width:130px; }
+.progress-bar   { flex:1; height:6px; background:var(--bg3); border-radius:4px; overflow:hidden; }
+.progress-fill  { height:100%; border-radius:4px; animation:fillBar 1.2s ease both; }
+@keyframes fillBar { from{width:0%} }
+
+/* FILE TREE */
+.file-tree { background:#010409; border:1px solid var(--border); border-radius:10px; padding:16px; font-family:'Fira Code',monospace; font-size:12px; line-height:2; margin-bottom:16px; white-space:pre; overflow-x:auto; }
+.ft-dir    { color:var(--blue); }
+.ft-tf     { color:var(--orange); }
+.ft-other  { color:var(--dim); }
+
+/* STEP LIST */
+.step-list { list-style:none; display:flex; flex-direction:column; gap:0; margin-bottom:24px; }
+.step-item { display:flex; gap:16px; padding:16px 0; border-bottom:1px solid var(--border); }
+.step-item:last-child { border-bottom:none; }
+.step-num  { width:30px; height:30px; border-radius:50%; background:var(--orange); color:#000; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+.step-content h4 { font-size:14px; font-weight:700; margin-bottom:4px; }
+.step-content p  { font-size:13px; color:var(--dim); line-height:1.6; }
+
+/* FOOTER */
+footer { text-align:center; padding:32px; border-top:1px solid var(--border); color:var(--dim); font-size:12px; margin-top:40px; }
+footer span { color:var(--orange); }
+
+@media(max-width:600px) {
+  .hero { padding:50px 16px 40px; } .hero-stats { gap:20px; }
+  .tl-header { gap:10px; } .tabs { padding:12px; }
+  .tab-btn { padding:7px 12px; font-size:12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <div class="hero-badge">🏗️ Terraform + AWS · Cloud Practitioner</div>
+    <h1>Trilha <span class="grad">do Zero ao Deploy</span><br>com Terraform</h1>
+    <p>Você já executou labs prontos. Agora você escreve o Terraform. Cada lab tem contexto real, estrutura de arquivos definida e nenhum <code>main.tf</code> esperando por você.</p>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-num">5</div><div class="stat-label">Labs</div></div>
+      <div class="stat"><div class="stat-num">~3h</div><div class="stat-label">Total</div></div>
+      <div class="stat"><div class="stat-num">10+</div><div class="stat-label">Resources</div></div>
+      <div class="stat"><div class="stat-num">0%</div><div class="stat-label">Pronto p/ copiar</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<nav class="tabs">
+  <button class="tab-btn active" onclick="showTab('trilha',event)">🗺️ Trilha</button>
+  <button class="tab-btn" onclick="showTab('terraform-101',event)">🏗️ Terraform 101</button>
+  <button class="tab-btn" onclick="showTab('lab1',event)">1 · EC2</button>
+  <button class="tab-btn" onclick="showTab('lab2',event)">2 · S3 Site</button>
+  <button class="tab-btn" onclick="showTab('lab3',event)">3 · Lambda API</button>
+  <button class="tab-btn" onclick="showTab('lab4',event)">4 · IAM</button>
+  <button class="tab-btn" onclick="showTab('lab5',event)">5 · CloudWatch</button>
+</nav>
+
+<!-- ══════════ TRILHA ══════════ -->
+<section id="trilha" class="section active">
+  <div class="container">
+    <h2 class="section-title">🗺️ Visão Geral da Trilha</h2>
+    <p class="section-sub">5 labs em progressão. O contexto é a startup <strong>ShopCloud</strong> que precisa construir infraestrutura AWS do zero. Você escreve o Terraform, valida, aplica e verifica. Nenhum arquivo pronto.</p>
+
+    <div class="alert alert-orange">
+      <strong>⚠️ Regra da trilha:</strong>
+      <p>Nenhum <code>main.tf</code> pronto. Você recebe a estrutura de arquivos, os resources que precisa criar e o critério de sucesso. O código é seu. Quando travar, consulte a <a href="https://registry.terraform.io/providers/hashicorp/aws/latest/docs" style="color:var(--blue)">documentação do Terraform AWS Provider</a> antes de pedir ajuda.</p>
+    </div>
+
+    <div class="timeline">
+
+      <div class="tl-item">
+        <div class="tl-dot" style="background:var(--orange)"></div>
+        <div class="tl-card" style="border-color:rgba(255,153,0,.25)">
+          <div class="tl-header">
+            <div class="tl-icon" style="background:rgba(255,153,0,.1);border-color:rgba(255,153,0,.4)">🖥️</div>
+            <div class="tl-meta">
+              <div class="tl-num" style="color:var(--orange)">Lab 01 · ~35 min</div>
+              <div class="tl-title">EC2 com nginx via User Data</div>
+              <div class="tl-context">"A ShopCloud precisa de um servidor web para hospedar a loja"</div>
+            </div>
+            <div class="tl-badges">
+              <span class="badge" style="color:var(--green);border-color:var(--green);background:rgba(63,185,80,.1)">INICIANTE</span>
+              <span class="badge" style="color:var(--orange);border-color:rgba(255,153,0,.4);background:rgba(255,153,0,.08)">aws_instance · aws_security_group</span>
+            </div>
+          </div>
+          <div class="tl-body">Antes de trabalhar com serverless, entenda o que você está substituindo. Crie uma EC2 com Terraform, configure o Security Group e use <code>user_data</code> para instalar o nginx automaticamente na inicialização.</div>
+          <ul class="tl-tasks">
+            <li>Configurar <code>provider.tf</code> com região e <code>default_tags</code></li>
+            <li>Usar <code>data "aws_ami"</code> para buscar Amazon Linux 2023 dinamicamente</li>
+            <li>Criar <code>aws_security_group</code> liberando porta 80</li>
+            <li>Criar <code>aws_instance</code> t2.micro com <code>user_data</code> que instala nginx</li>
+            <li>Expor o IP público via <code>outputs.tf</code></li>
+          </ul>
+          <div class="tl-goal"><strong>✅ Critério de sucesso:</strong> <code>curl http://$(terraform output -raw ip_publico)</code> retorna status 200.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-dot" style="background:var(--blue)"></div>
+        <div class="tl-card" style="border-color:rgba(88,166,255,.25)">
+          <div class="tl-header">
+            <div class="tl-icon" style="background:rgba(88,166,255,.1);border-color:rgba(88,166,255,.4)">🪣</div>
+            <div class="tl-meta">
+              <div class="tl-num" style="color:var(--blue)">Lab 02 · ~25 min</div>
+              <div class="tl-title">S3 Static Website</div>
+              <div class="tl-context">"A ShopCloud quer hospedar o site sem gerenciar servidores"</div>
+            </div>
+            <div class="tl-badges">
+              <span class="badge" style="color:var(--green);border-color:var(--green);background:rgba(63,185,80,.1)">INICIANTE</span>
+              <span class="badge" style="color:var(--blue);border-color:rgba(88,166,255,.4);background:rgba(88,166,255,.08)">aws_s3_bucket · website_configuration</span>
+            </div>
+          </div>
+          <div class="tl-body">A mesma página do lab anterior, sem servidor. Configure o bucket S3 para servir arquivos HTML estáticos, gerencie bucket policy e Block Public Access com Terraform.</div>
+          <ul class="tl-tasks">
+            <li>Criar <code>aws_s3_bucket</code> com nome único via <code>random_id</code></li>
+            <li>Configurar <code>aws_s3_bucket_website_configuration</code></li>
+            <li>Desabilitar <code>aws_s3_bucket_public_access_block</code></li>
+            <li>Criar <code>aws_s3_bucket_policy</code> com <code>s3:GetObject</code> público</li>
+            <li>Fazer upload do <code>index.html</code> via <code>aws_s3_object</code></li>
+          </ul>
+          <div class="tl-goal"><strong>✅ Critério de sucesso:</strong> <code>terraform output website_url</code> retorna a URL e a página abre no navegador sem erros.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-dot" style="background:var(--purple)"></div>
+        <div class="tl-card" style="border-color:rgba(163,113,247,.25)">
+          <div class="tl-header">
+            <div class="tl-icon" style="background:rgba(163,113,247,.1);border-color:rgba(163,113,247,.4)">⚡</div>
+            <div class="tl-meta">
+              <div class="tl-num" style="color:var(--purple)">Lab 03 · ~45 min</div>
+              <div class="tl-title">Lambda + Function URL — API de Pedidos</div>
+              <div class="tl-context">"A ShopCloud precisa de uma API para consultar pedidos do DynamoDB"</div>
+            </div>
+            <div class="tl-badges">
+              <span class="badge" style="color:var(--yellow);border-color:var(--yellow);background:rgba(227,179,65,.1)">INTERMEDIÁRIO</span>
+              <span class="badge" style="color:var(--purple);border-color:rgba(163,113,247,.4);background:rgba(163,113,247,.08)">aws_lambda_function · archive_file · iam_role</span>
+            </div>
+          </div>
+          <div class="tl-body">Use o mesmo padrão do <code>lab-07-lambda-python</code> que você já estudou. IAM Role, empacotamento com <code>archive_file</code>, CloudWatch Log Group e Function URL. O código Python consulta o DynamoDB.</div>
+          <ul class="tl-tasks">
+            <li>Criar <code>aws_iam_role</code> com trust policy para Lambda</li>
+            <li>Usar <code>data "archive_file"</code> para empacotar o <code>.py</code> em <code>.zip</code></li>
+            <li>Criar <code>aws_lambda_function</code> com <code>source_code_hash</code></li>
+            <li>Criar <code>aws_cloudwatch_log_group</code> com retenção de 7 dias</li>
+            <li>Criar <code>aws_lambda_function_url</code> com <code>authorization_type = "NONE"</code></li>
+          </ul>
+          <div class="tl-goal"><strong>✅ Critério de sucesso:</strong> <code>curl $(terraform output -raw function_url)</code> retorna JSON com os pedidos do DynamoDB.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-dot" style="background:var(--teal)"></div>
+        <div class="tl-card" style="border-color:rgba(57,208,176,.25)">
+          <div class="tl-header">
+            <div class="tl-icon" style="background:rgba(57,208,176,.1);border-color:rgba(57,208,176,.4)">🔐</div>
+            <div class="tl-meta">
+              <div class="tl-num" style="color:var(--teal)">Lab 04 · ~35 min</div>
+              <div class="tl-title">IAM — Usuário, Grupo e Policy</div>
+              <div class="tl-context">"A ShopCloud contratou um dev júnior que só pode ler pedidos"</div>
+            </div>
+            <div class="tl-badges">
+              <span class="badge" style="color:var(--yellow);border-color:var(--yellow);background:rgba(227,179,65,.1)">INTERMEDIÁRIO</span>
+              <span class="badge" style="color:var(--teal);border-color:rgba(57,208,176,.4);background:rgba(57,208,176,.08)">aws_iam_user · aws_iam_policy · aws_iam_group</span>
+            </div>
+          </div>
+          <div class="tl-body">Gerencie identidades e permissões como código. Crie usuário, grupo e policy customizada com least privilege — tudo via Terraform, sem tocar no console IAM.</div>
+          <ul class="tl-tasks">
+            <li>Criar <code>aws_iam_user</code> e <code>aws_iam_access_key</code></li>
+            <li>Criar <code>aws_iam_group</code> e <code>aws_iam_group_membership</code></li>
+            <li>Escrever <code>aws_iam_policy</code> com <code>dynamodb:Scan</code> restrito ao ARN exato</li>
+            <li>Anexar policy ao grupo com <code>aws_iam_group_policy_attachment</code></li>
+            <li>Validar com <code>aws iam simulate-principal-policy</code></li>
+          </ul>
+          <div class="tl-goal"><strong>✅ Critério de sucesso:</strong> <code>dynamodb:Scan</code> funciona, <code>dynamodb:DeleteItem</code> retorna <code>AccessDeniedException</code>.</div>
+        </div>
+      </div>
+
+      <div class="tl-item">
+        <div class="tl-dot" style="background:var(--green)"></div>
+        <div class="tl-card" style="border-color:rgba(63,185,80,.25)">
+          <div class="tl-header">
+            <div class="tl-icon" style="background:rgba(63,185,80,.1);border-color:rgba(63,185,80,.4)">📊</div>
+            <div class="tl-meta">
+              <div class="tl-num" style="color:var(--green)">Lab 05 · ~30 min</div>
+              <div class="tl-title">CloudWatch Alarm + SNS por e-mail</div>
+              <div class="tl-context">"A ShopCloud quer ser notificada quando a Lambda falha"</div>
+            </div>
+            <div class="tl-badges">
+              <span class="badge" style="color:var(--red);border-color:var(--red);background:rgba(248,81,73,.1)">AVANÇADO</span>
+              <span class="badge" style="color:var(--green);border-color:rgba(63,185,80,.4);background:rgba(63,185,80,.08)">aws_cloudwatch_metric_alarm · aws_sns_topic</span>
+            </div>
+          </div>
+          <div class="tl-body">Toda a stack de monitoramento como código. Um único <code>terraform apply</code> cria o tópico SNS, a subscription de e-mail e o alarm do CloudWatch. Depois você força um erro para ver o alerta em ação.</div>
+          <ul class="tl-tasks">
+            <li>Criar <code>aws_sns_topic</code> e <code>aws_sns_topic_subscription</code> com protocolo email</li>
+            <li>Criar <code>aws_cloudwatch_metric_alarm</code> monitorando <code>Errors</code> da Lambda</li>
+            <li>Configurar <code>alarm_actions</code> apontando para o ARN do SNS</li>
+            <li>Confirmar o e-mail de subscription manualmente após o apply</li>
+            <li>Forçar erro na Lambda e confirmar recebimento do alerta</li>
+          </ul>
+          <div class="tl-goal"><strong>✅ Critério de sucesso:</strong> Receber e-mail de alerta da AWS com estado <code>ALARM</code> após forçar erro na Lambda.</div>
+        </div>
+      </div>
+
+    </div><!-- /timeline -->
+
+    <h3 style="font-size:14px;font-weight:700;margin:8px 0 16px">Distribuição de dificuldade</h3>
+    <div>
+      <div class="progress-row"><span class="progress-label">Iniciante (Labs 1–2)</span><div class="progress-bar"><div class="progress-fill" style="width:40%;background:var(--green)"></div></div><span style="font-size:12px;color:var(--dim)">40%</span></div>
+      <div class="progress-row"><span class="progress-label">Intermediário (Labs 3–4)</span><div class="progress-bar"><div class="progress-fill" style="width:40%;background:var(--yellow)"></div></div><span style="font-size:12px;color:var(--dim)">40%</span></div>
+      <div class="progress-row"><span class="progress-label">Avançado (Lab 5)</span><div class="progress-bar"><div class="progress-fill" style="width:20%;background:var(--red)"></div></div><span style="font-size:12px;color:var(--dim)">20%</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ TERRAFORM 101 ══════════ -->
+<section id="terraform-101" class="section">
+  <div class="container">
+    <h2 class="section-title">🏗️ Terraform 101</h2>
+    <p class="section-sub">Tudo que você precisa saber antes de começar os labs. Se já conhece, use como revisão rápida.</p>
+
+    <div class="alert alert-blue">
+      <strong>💡 O que é Terraform?</strong>
+      <p>Infrastructure as Code (IaC): você descreve o que quer ter na AWS em arquivos <code>.tf</code> e o Terraform cria, atualiza e destrói os recursos automaticamente. Em vez de clicar no console ou rodar comandos CLI, você escreve código versionável, reutilizável e auditável.</p>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:16px">Estrutura de arquivos de cada lab</h3>
+    <div class="file-tree">
+<span class="ft-dir">lab-XX-nome/</span>
+├── <span class="ft-tf">main.tf</span>        <span class="c-dim"># recursos AWS (aws_instance, aws_s3_bucket, etc.)</span>
+├── <span class="ft-tf">variables.tf</span>   <span class="c-dim"># inputs configuráveis (região, tipo de instância, etc.)</span>
+├── <span class="ft-tf">outputs.tf</span>     <span class="c-dim"># valores exportados após o apply (IP, URL, ARN, etc.)</span>
+├── <span class="ft-tf">provider.tf</span>    <span class="c-dim"># configuração do provider AWS + default_tags</span>
+├── <span class="ft-tf">versions.tf</span>    <span class="c-dim"># versão mínima do Terraform e do provider AWS</span>
+├── <span class="ft-tf">backend.tf</span>     <span class="c-dim"># onde guardar o tfstate (local ou S3)</span>
+└── <span class="ft-other">src/</span>           <span class="c-dim"># código da Lambda (quando necessário)</span>
+    └── <span class="ft-other">handler.py</span>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:16px">Fluxo de trabalho</h3>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>terraform init</h4>
+          <p>Baixa o provider AWS e inicializa o backend. Rode sempre que criar um novo diretório ou adicionar um novo provider.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>terraform plan</h4>
+          <p>Mostra o que vai ser criado, modificado ou destruído — sem mexer em nada. Leia sempre antes do apply. O output mostra <code>+</code> criar, <code>~</code> modificar, <code>-</code> destruir.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>terraform apply</h4>
+          <p>Executa as mudanças. Pede confirmação (<code>yes</code>) antes de aplicar. Use <code>-auto-approve</code> só em automação, nunca na mão.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>terraform output</h4>
+          <p>Mostra os valores declarados no <code>outputs.tf</code>. Use <code>terraform output -raw nome_do_output</code> para pegar o valor sem formatação (útil em scripts).</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>terraform destroy</h4>
+          <p>Apaga todos os recursos gerenciados pelo state. <strong>Sempre rode ao terminar o lab</strong> para evitar cobranças.</p>
+        </div>
+      </li>
+    </ul>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:16px">Templates de partida — copie e adapte</h3>
+
+    <div class="grid-2">
+      <div>
+        <p style="font-size:12px;color:var(--dim);margin-bottom:6px;font-weight:600">provider.tf</p>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+          <pre><span class="c-purple">provider</span> <span class="c-green">"aws"</span> {
+  region = <span class="c-yellow">var.aws_region</span>
+
+  default_tags {
+    tags = {
+      ManagedBy = <span class="c-green">"terraform"</span>
+      Lab       = <span class="c-green">"lab-XX-nome"</span>
+    }
+  }
+}</pre>
+        </div>
+      </div>
+      <div>
+        <p style="font-size:12px;color:var(--dim);margin-bottom:6px;font-weight:600">versions.tf</p>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+          <pre><span class="c-purple">terraform</span> {
+  required_version = <span class="c-green">">= 1.0"</span>
+
+  required_providers {
+    aws = {
+      source  = <span class="c-green">"hashicorp/aws"</span>
+      version = <span class="c-green">"~> 5.0"</span>
+    }
+  }
+}</pre>
+        </div>
+      </div>
+      <div>
+        <p style="font-size:12px;color:var(--dim);margin-bottom:6px;font-weight:600">variables.tf (padrão)</p>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+          <pre><span class="c-purple">variable</span> <span class="c-green">"aws_region"</span> {
+  description = <span class="c-green">"Região AWS"</span>
+  type        = <span class="c-blue">string</span>
+  default     = <span class="c-green">"us-east-1"</span>
+}
+
+<span class="c-purple">variable</span> <span class="c-green">"nome_projeto"</span> {
+  description = <span class="c-green">"Nome do projeto"</span>
+  type        = <span class="c-blue">string</span>
+  default     = <span class="c-green">"lab-XX"</span>
+}</pre>
+        </div>
+      </div>
+      <div>
+        <p style="font-size:12px;color:var(--dim);margin-bottom:6px;font-weight:600">backend.tf (local)</p>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+          <pre><span class="c-purple">terraform</span> {
+  backend <span class="c-green">"local"</span> {
+    path = <span class="c-green">"terraform.tfstate"</span>
+  }
+}
+
+<span class="c-dim"># Para usar S3 como backend:</span>
+<span class="c-dim"># backend "s3" {</span>
+<span class="c-dim">#   bucket = "meu-bucket-tfstate"</span>
+<span class="c-dim">#   key    = "lab-XX/terraform.tfstate"</span>
+<span class="c-dim"># }</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-orange">
+      <strong>⚠️ Nunca commite o tfstate</strong>
+      <p>O arquivo <code>terraform.tfstate</code> pode conter senhas, ARNs e chaves de acesso em texto claro. Adicione ao <code>.gitignore</code>: <code>*.tfstate</code>, <code>*.tfstate.backup</code>, <code>.terraform/</code>, <code>*.pem</code>.</p>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin:24px 0 12px">Resources que você vai usar nos labs</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Resource</th><th>Lab</th><th>O que cria</th></tr></thead>
+        <tbody>
+          <tr><td><code class="c-orange">aws_instance</code></td><td>1</td><td>Instância EC2</td></tr>
+          <tr><td><code class="c-orange">aws_security_group</code></td><td>1</td><td>Firewall da EC2</td></tr>
+          <tr><td><code class="c-orange">data.aws_ami</code></td><td>1</td><td>Busca AMI dinamicamente (não hardcoda)</td></tr>
+          <tr><td><code class="c-blue">aws_s3_bucket</code></td><td>2</td><td>Bucket S3</td></tr>
+          <tr><td><code class="c-blue">aws_s3_bucket_website_configuration</code></td><td>2</td><td>Habilita static website hosting</td></tr>
+          <tr><td><code class="c-blue">aws_s3_object</code></td><td>2</td><td>Faz upload de arquivo para o bucket</td></tr>
+          <tr><td><code class="c-purple">aws_lambda_function</code></td><td>3</td><td>Função Lambda</td></tr>
+          <tr><td><code class="c-purple">data.archive_file</code></td><td>3</td><td>Empacota .py em .zip automaticamente</td></tr>
+          <tr><td><code class="c-purple">aws_lambda_function_url</code></td><td>3</td><td>Endpoint HTTPS para a Lambda</td></tr>
+          <tr><td><code class="c-teal">aws_iam_user</code></td><td>4</td><td>Usuário IAM</td></tr>
+          <tr><td><code class="c-teal">aws_iam_policy</code></td><td>4</td><td>Policy customizada com permissões</td></tr>
+          <tr><td><code class="c-teal">aws_iam_group_policy_attachment</code></td><td>4</td><td>Anexa policy a um grupo</td></tr>
+          <tr><td><code class="c-green">aws_cloudwatch_metric_alarm</code></td><td>5</td><td>Alarm que monitora métricas</td></tr>
+          <tr><td><code class="c-green">aws_sns_topic_subscription</code></td><td>5</td><td>Assinatura de e-mail no SNS</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ LAB 1 ══════════ -->
+<section id="lab1" class="section">
+  <div class="container">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap">
+      <div style="font-size:2.5rem">🖥️</div>
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--orange);margin-bottom:4px">Lab 01 · EC2 · ~35 min</div>
+        <h2 class="section-title" style="margin-bottom:4px">Servidor Web EC2 com Terraform</h2>
+        <p style="font-size:13px;color:var(--dim);font-style:italic">"A ShopCloud precisa de um servidor web para hospedar a loja"</p>
+      </div>
+    </div>
+
+    <div class="alert alert-orange">
+      <strong>🎯 Contexto</strong>
+      <p>Antes de trabalhar com serverless, entenda o que você está substituindo. Você vai criar uma EC2 com Terraform, configurar o Security Group para liberar HTTP e usar <code>user_data</code> para instalar o nginx automaticamente na primeira inicialização — tudo descrito como código.</p>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">📁 Estrutura esperada</h3>
+    <div class="file-tree">
+<span class="ft-dir">lab-01-ec2-nginx/</span>
+├── <span class="ft-tf">main.tf</span>        <span class="c-dim"># data aws_ami, aws_security_group, aws_instance</span>
+├── <span class="ft-tf">variables.tf</span>   <span class="c-dim"># aws_region, instance_type, nome_projeto</span>
+├── <span class="ft-tf">outputs.tf</span>     <span class="c-dim"># ip_publico, instance_id, comando_ssh</span>
+├── <span class="ft-tf">provider.tf</span>
+├── <span class="ft-tf">versions.tf</span>
+└── <span class="ft-tf">backend.tf</span>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">📋 Requisitos</h3>
+    <div class="format-card">
+      <div class="format-body">
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:10px">
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--orange);flex-shrink:0;font-weight:700">R1</span> <code>data "aws_ami"</code> buscando Amazon Linux 2023 com filtro — sem hardcodar o ID</li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--orange);flex-shrink:0;font-weight:700">R2</span> <code>aws_security_group</code> com ingress na porta 80 (HTTP) e egress liberado</li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--orange);flex-shrink:0;font-weight:700">R3</span> <code>aws_instance</code> t2.micro com o Security Group associado</li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--orange);flex-shrink:0;font-weight:700">R4</span> <code>user_data</code> que instala nginx e cria <code>/var/www/html/index.html</code> com "ShopCloud"</li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--orange);flex-shrink:0;font-weight:700">R5</span> Output <code>ip_publico</code> expondo o IP da instância</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">💡 Dicas</h3>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Como usar data source para AMI?</div>
+        <div class="card-body">Use <code>data "aws_ami"</code> com <code>most_recent = true</code>, <code>owners = ["amazon"]</code> e filtros por <code>name = "al2023-ami-*-x86_64"</code>. Referencie com <code>data.aws_ami.nome.id</code>.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Como passar user_data no Terraform?</div>
+        <div class="card-body">Use heredoc diretamente no resource: <code>user_data = &lt;&lt;-EOF ... EOF</code>. O Terraform automaticamente faz o base64 para a AWS. Comece sempre com <code>#!/bin/bash</code>.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Instância sem IP público?</div>
+        <div class="card-body">Verifique se <code>associate_public_ip_address = true</code> está configurado no resource, ou se a subnet padrão da VPC já atribui IP público por padrão.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">nginx não está respondendo?</div>
+        <div class="card-body">O <code>user_data</code> roda só na primeira inicialização. Verifique os logs em <code>/var/log/cloud-init-output.log</code>. Confirme que a porta 80 está no Security Group, não 8080 ou 443.</div>
+      </div>
+    </div>
+
+    <div class="format-card" style="border-color:rgba(63,185,80,.3)">
+      <div class="format-header" style="background:rgba(63,185,80,.05)">
+        <div class="format-icon" style="background:rgba(63,185,80,.1)">✅</div>
+        <div><div class="format-title" style="color:var(--green)">Critério de Sucesso</div></div>
+      </div>
+      <div class="format-body">
+        <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+<pre><span class="c-dim"># Aplicar</span>
+terraform init && terraform apply
+
+<span class="c-dim"># Verificar — deve retornar 200</span>
+curl -o /dev/null -s -w <span class="c-orange">"%{http_code}"</span> http://$(terraform output -raw ip_publico)
+
+<span class="c-dim"># Cleanup ao terminar</span>
+terraform destroy</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ LAB 2 ══════════ -->
+<section id="lab2" class="section">
+  <div class="container">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap">
+      <div style="font-size:2.5rem">🪣</div>
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--blue);margin-bottom:4px">Lab 02 · S3 · ~25 min</div>
+        <h2 class="section-title" style="margin-bottom:4px">S3 Static Website com Terraform</h2>
+        <p style="font-size:13px;color:var(--dim);font-style:italic">"A ShopCloud quer hospedar o site sem gerenciar servidores"</p>
+      </div>
+    </div>
+
+    <div class="alert alert-blue">
+      <strong>🎯 Contexto</strong>
+      <p>A mesma página do lab anterior, sem servidor. O S3 serve HTML diretamente pelo navegador. Você vai criar e configurar o bucket inteiramente via Terraform — incluindo bucket policy, public access block e upload do arquivo HTML.</p>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">📁 Estrutura esperada</h3>
+    <div class="file-tree">
+<span class="ft-dir">lab-02-s3-website/</span>
+├── <span class="ft-tf">main.tf</span>        <span class="c-dim"># aws_s3_bucket, website_config, public_access_block, policy, aws_s3_object</span>
+├── <span class="ft-tf">variables.tf</span>
+├── <span class="ft-tf">outputs.tf</span>     <span class="c-dim"># website_url, bucket_name</span>
+├── <span class="ft-tf">provider.tf</span>    <span class="c-dim"># adicionar provider "random" para nome único</span>
+├── <span class="ft-tf">versions.tf</span>
+├── <span class="ft-tf">backend.tf</span>
+└── <span class="ft-other">index.html</span>     <span class="c-dim"># página da ShopCloud que você vai criar</span>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">📋 Requisitos</h3>
+    <div class="format-card">
+      <div class="format-body">
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:10px">
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--blue);flex-shrink:0;font-weight:700">R1</span> <code>aws_s3_bucket</code> com nome único gerado por <code>random_id</code></li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--blue);flex-shrink:0;font-weight:700">R2</span> <code>aws_s3_bucket_public_access_block</code> com todos os blocos desabilitados</li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--blue);flex-shrink:0;font-weight:700">R3</span> <code>aws_s3_bucket_website_configuration</code> com <code>index_document = "index.html"</code></li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--blue);flex-shrink:0;font-weight:700">R4</span> <code>aws_s3_bucket_policy</code> com <code>s3:GetObject</code> para <code>Principal = "*"</code></li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--blue);flex-shrink:0;font-weight:700">R5</span> <code>aws_s3_object</code> fazendo upload do <code>index.html</code> com <code>content_type = "text/html"</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">💡 Dicas</h3>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Ordem importa: public_access_block antes da policy</div>
+        <div class="card-body">Se o <code>block_public_policy = true</code> ainda estiver ativo, o Terraform vai falhar ao tentar aplicar a bucket policy. Use <code>depends_on</code> ou garanta que o <code>public_access_block</code> seja aplicado primeiro.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Como montar o website_url no output?</div>
+        <div class="card-body">A URL segue o padrão <code>http://BUCKET.s3-website-REGION.amazonaws.com</code>. Use interpolação: <code>"http://${aws_s3_bucket.nome.bucket}.s3-website-${var.aws_region}.amazonaws.com"</code></div>
+      </div>
+      <div class="card">
+        <div class="card-title">jsonencode para a bucket policy</div>
+        <div class="card-body">Use <code>jsonencode()</code> do Terraform em vez de heredoc para a policy. Fica mais legível e evita erros de escape de aspas. O ARN do bucket é <code>aws_s3_bucket.nome.arn</code>.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">aws_s3_object não atualiza o arquivo?</div>
+        <div class="card-body">Adicione <code>etag = filemd5("index.html")</code> ao resource. O Terraform vai detectar mudanças no conteúdo do arquivo e fazer re-upload automaticamente.</div>
+      </div>
+    </div>
+
+    <div class="format-card" style="border-color:rgba(63,185,80,.3)">
+      <div class="format-header" style="background:rgba(63,185,80,.05)">
+        <div class="format-icon" style="background:rgba(63,185,80,.1)">✅</div>
+        <div><div class="format-title" style="color:var(--green)">Critério de Sucesso</div></div>
+      </div>
+      <div class="format-body">
+        <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+<pre><span class="c-dim"># Verificar — deve retornar 200 e o HTML da ShopCloud</span>
+curl -s $(terraform output -raw website_url)
+
+<span class="c-dim"># Abrir no navegador</span>
+echo $(terraform output -raw website_url)</pre>
+        </div>
+        <p style="font-size:13px;color:var(--dim);margin-top:8px">Reflexão: compare a quantidade de código Terraform do Lab 1 (EC2) com o Lab 2 (S3). Qual foi mais simples? Por quê a AWS cobra menos pelo S3 do que pela EC2?</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ LAB 3 ══════════ -->
+<section id="lab3" class="section">
+  <div class="container">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap">
+      <div style="font-size:2.5rem">⚡</div>
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--purple);margin-bottom:4px">Lab 03 · Lambda · ~45 min</div>
+        <h2 class="section-title" style="margin-bottom:4px">Lambda + Function URL — API de Pedidos</h2>
+        <p style="font-size:13px;color:var(--dim);font-style:italic">"A ShopCloud precisa de uma API para consultar pedidos do DynamoDB"</p>
+      </div>
+    </div>
+
+    <div class="alert alert-purple">
+      <strong>🎯 Contexto</strong>
+      <p>O padrão deste lab é o mesmo do <code>lab-07-lambda-python</code> que você já estudou. IAM Role, empacotamento com <code>archive_file</code>, CloudWatch Log Group e Function URL. A diferença é que o código Python aqui vai consultar o DynamoDB e retornar os pedidos em JSON.</p>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">📁 Estrutura esperada</h3>
+    <div class="file-tree">
+<span class="ft-dir">lab-03-lambda-api/</span>
+├── <span class="ft-tf">main.tf</span>        <span class="c-dim"># iam_role, archive_file, lambda_function, log_group, function_url</span>
+├── <span class="ft-tf">variables.tf</span>   <span class="c-dim"># aws_region, nome_projeto, runtime, timeout, table_name</span>
+├── <span class="ft-tf">outputs.tf</span>     <span class="c-dim"># function_url, function_name, role_arn</span>
+├── <span class="ft-tf">provider.tf</span>
+├── <span class="ft-tf">versions.tf</span>
+├── <span class="ft-tf">backend.tf</span>
+└── <span class="ft-other">src/</span>
+    └── <span class="ft-other">api_pedidos.py</span>  <span class="c-dim"># seu código Python aqui</span>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">📋 Requisitos</h3>
+    <div class="format-card">
+      <div class="format-body">
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:10px">
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--purple);flex-shrink:0;font-weight:700">R1</span> <code>aws_iam_role</code> com trust policy para <code>lambda.amazonaws.com</code> + attachment de <code>AWSLambdaBasicExecutionRole</code></li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--purple);flex-shrink:0;font-weight:700">R2</span> Policy inline com <code>dynamodb:Scan</code> e <code>dynamodb:GetItem</code> no ARN exato da tabela <code>lab-pedidos</code></li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--purple);flex-shrink:0;font-weight:700">R3</span> <code>data "archive_file"</code> empacotando <code>src/api_pedidos.py</code> + <code>source_code_hash</code> no resource</li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--purple);flex-shrink:0;font-weight:700">R4</span> <code>aws_cloudwatch_log_group</code> com <code>retention_in_days = 7</code> e <code>depends_on</code> na Lambda</li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--purple);flex-shrink:0;font-weight:700">R5</span> <code>aws_lambda_function_url</code> com <code>authorization_type = "NONE"</code> e CORS configurado</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">💡 Dicas</h3>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Decimal não serializa em JSON?</div>
+        <div class="card-body">O DynamoDB retorna <code>Decimal</code> em campos numéricos. O <code>json.dumps()</code> nativo não sabe converter. Crie um <code>DecimalEncoder</code> customizado ou use <code>float(v)</code> antes de serializar.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">source_code_hash por que é importante?</div>
+        <div class="card-body">Sem ele, o Terraform não detecta mudanças no <code>.py</code> e não faz re-deploy. Com <code>source_code_hash = data.archive_file.lambda.output_base64sha256</code>, qualquer mudança no código gera um novo deploy.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Como expor a TABLE_NAME como variável?</div>
+        <div class="card-body">Use o bloco <code>environment { variables = { TABLE_NAME = var.table_name } }</code> no resource da Lambda. No Python, acesse com <code>os.environ["TABLE_NAME"]</code>.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Function URL retorna 403?</div>
+        <div class="card-body">Confirme que <code>authorization_type = "NONE"</code> está definido. Se usar <code>"AWS_IAM"</code>, as requisições precisam ser assinadas com credenciais AWS.</div>
+      </div>
+    </div>
+
+    <div class="format-card" style="border-color:rgba(63,185,80,.3)">
+      <div class="format-header" style="background:rgba(63,185,80,.05)">
+        <div class="format-icon" style="background:rgba(63,185,80,.1)">✅</div>
+        <div><div class="format-title" style="color:var(--green)">Critério de Sucesso</div></div>
+      </div>
+      <div class="format-body">
+        <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+<pre><span class="c-dim"># Chamar a API — deve retornar os pedidos em JSON</span>
+curl -s $(terraform output -raw function_url) | python3 -m json.tool
+
+<span class="c-dim"># Saída esperada: lista com os pedidos da tabela lab-pedidos</span>
+<span class="c-green">[
+  { "cliente": "Ana Lima", "produto": "Notebook Dell", ... },
+  ...
+]</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ LAB 4 ══════════ -->
+<section id="lab4" class="section">
+  <div class="container">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap">
+      <div style="font-size:2.5rem">🔐</div>
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--teal);margin-bottom:4px">Lab 04 · IAM · ~35 min</div>
+        <h2 class="section-title" style="margin-bottom:4px">IAM — Usuário, Grupo e Policy</h2>
+        <p style="font-size:13px;color:var(--dim);font-style:italic">"A ShopCloud contratou um dev júnior que só pode ler pedidos"</p>
+      </div>
+    </div>
+
+    <div class="alert alert-teal">
+      <strong>🎯 Contexto</strong>
+      <p>Gerencie identidades AWS como código. Crie o usuário, o grupo e a policy customizada inteiramente via Terraform. Nada de clicar no console IAM. O objetivo é internalizar o conceito de <em>least privilege</em>: conceder apenas o que é necessário, nada mais.</p>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">📁 Estrutura esperada</h3>
+    <div class="file-tree">
+<span class="ft-dir">lab-04-iam/</span>
+├── <span class="ft-tf">main.tf</span>        <span class="c-dim"># iam_user, iam_access_key, iam_group, iam_group_membership, iam_policy, group_policy_attachment</span>
+├── <span class="ft-tf">variables.tf</span>   <span class="c-dim"># aws_region, nome_usuario, nome_grupo, table_arn</span>
+├── <span class="ft-tf">outputs.tf</span>     <span class="c-dim"># access_key_id, secret_access_key (sensitive!)</span>
+├── <span class="ft-tf">provider.tf</span>
+├── <span class="ft-tf">versions.tf</span>
+└── <span class="ft-tf">backend.tf</span>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">📋 Requisitos</h3>
+    <div class="format-card">
+      <div class="format-body">
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:10px">
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--teal);flex-shrink:0;font-weight:700">R1</span> <code>aws_iam_user</code> e <code>aws_iam_access_key</code> para o dev júnior</li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--teal);flex-shrink:0;font-weight:700">R2</span> <code>aws_iam_group</code> e <code>aws_iam_group_membership</code> associando o usuário ao grupo</li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--teal);flex-shrink:0;font-weight:700">R3</span> <code>aws_iam_policy</code> com <code>dynamodb:Scan</code> e <code>dynamodb:GetItem</code> usando <code>jsonencode()</code>, restrito ao ARN exato da tabela</li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--teal);flex-shrink:0;font-weight:700">R4</span> <code>aws_iam_group_policy_attachment</code> associando a policy ao grupo</li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--teal);flex-shrink:0;font-weight:700">R5</span> Output <code>secret_access_key</code> marcado como <code>sensitive = true</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">💡 Dicas</h3>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Como testar com o usuário criado?</div>
+        <div class="card-body">Configure um segundo profile no CLI: <code>aws configure --profile dev-junior</code> usando as credenciais do output. Depois use <code>--profile dev-junior</code> nos comandos de teste.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">secret_access_key some após o apply?</div>
+        <div class="card-body">O Terraform mostra o <code>secret_access_key</code> apenas no primeiro <code>apply</code>. Anote imediatamente ou use <code>terraform output -raw secret_access_key</code> logo após o apply.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Como limitar ao ARN exato da tabela?</div>
+        <div class="card-body">No campo <code>Resource</code> da policy use: <code>arn:aws:dynamodb:REGION:ACCOUNT:table/lab-pedidos</code>. Use <code>data "aws_caller_identity"</code> para pegar o account ID dinamicamente.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Como validar a policy antes de aplicar?</div>
+        <div class="card-body">Após o apply, use <code>aws iam simulate-principal-policy --policy-source-arn ARN-USER --action-names dynamodb:DeleteItem --resource-arns ARN-TABLE --profile SEU-PERFIL</code> para testar sem executar a ação.</div>
+      </div>
+    </div>
+
+    <div class="format-card" style="border-color:rgba(63,185,80,.3)">
+      <div class="format-header" style="background:rgba(63,185,80,.05)">
+        <div class="format-icon" style="background:rgba(63,185,80,.1)">✅</div>
+        <div><div class="format-title" style="color:var(--green)">Critério de Sucesso</div></div>
+      </div>
+      <div class="format-body">
+        <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+<pre><span class="c-dim"># Com --profile dev-junior — deve FUNCIONAR</span>
+aws dynamodb scan --table-name lab-pedidos \
+  --profile dev-junior --region us-east-1
+
+<span class="c-dim"># Com --profile dev-junior — deve falhar com AccessDeniedException</span>
+aws dynamodb delete-item --table-name lab-pedidos \
+  --key '{"id":{"S":"teste"}}' \
+  --profile dev-junior --region us-east-1</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ LAB 5 ══════════ -->
+<section id="lab5" class="section">
+  <div class="container">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap">
+      <div style="font-size:2.5rem">📊</div>
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--green);margin-bottom:4px">Lab 05 · CloudWatch + SNS · ~30 min</div>
+        <h2 class="section-title" style="margin-bottom:4px">Monitoramento e Alertas</h2>
+        <p style="font-size:13px;color:var(--dim);font-style:italic">"A ShopCloud quer ser notificada quando a Lambda de pedidos falha"</p>
+      </div>
+    </div>
+
+    <div class="alert alert-green">
+      <strong>🎯 Contexto</strong>
+      <p>Toda a stack de monitoramento como código: tópico SNS, subscription de e-mail e alarm do CloudWatch — tudo gerenciado pelo Terraform. Um único <code>terraform apply</code> cria o sistema de alertas completo. Depois você força um erro na Lambda para ver o alerta em ação.</p>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">📁 Estrutura esperada</h3>
+    <div class="file-tree">
+<span class="ft-dir">lab-05-cloudwatch-alarm/</span>
+├── <span class="ft-tf">main.tf</span>        <span class="c-dim"># sns_topic, sns_topic_subscription, cloudwatch_metric_alarm</span>
+├── <span class="ft-tf">variables.tf</span>   <span class="c-dim"># aws_region, email_alerta, lambda_name, threshold</span>
+├── <span class="ft-tf">outputs.tf</span>     <span class="c-dim"># topic_arn, alarm_name</span>
+├── <span class="ft-tf">provider.tf</span>
+├── <span class="ft-tf">versions.tf</span>
+└── <span class="ft-tf">backend.tf</span>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">📋 Requisitos</h3>
+    <div class="format-card">
+      <div class="format-body">
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:10px">
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--green);flex-shrink:0;font-weight:700">R1</span> <code>aws_sns_topic</code> com nome <code>shopcloud-alertas</code></li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--green);flex-shrink:0;font-weight:700">R2</span> <code>aws_sns_topic_subscription</code> com <code>protocol = "email"</code> e o e-mail via variável</li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--green);flex-shrink:0;font-weight:700">R3</span> <code>aws_cloudwatch_metric_alarm</code> monitorando <code>metric_name = "Errors"</code> da Lambda com <code>namespace = "AWS/Lambda"</code></li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--green);flex-shrink:0;font-weight:700">R4</span> <code>alarm_actions = [aws_sns_topic.alertas.arn]</code> disparando para o SNS</li>
+          <li style="display:flex;gap:10px;font-size:13px"><span style="color:var(--green);flex-shrink:0;font-weight:700">R5</span> Confirmar e-mail de subscription manualmente e forçar erro na Lambda para receber o alerta</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">💡 Dicas</h3>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Terraform não consegue confirmar o e-mail</div>
+        <div class="card-body">A confirmação de e-mail do SNS é manual e fora do Terraform. Após o <code>apply</code>, acesse sua caixa de entrada e clique em "Confirm subscription". Sem isso, o estado fica <code>PendingConfirmation</code> e nenhum alerta é enviado.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Quais dimensions usar no alarm?</div>
+        <div class="card-body">Use <code>dimensions = { FunctionName = var.lambda_name }</code>. Sem isso o alarm monitora todos os erros Lambda da conta, não apenas a função específica.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Como forçar erro na Lambda?</div>
+        <div class="card-body">Faça upload de um arquivo JSON inválido no S3: <code>echo "invalido" | aws s3 cp - s3://SEU-BUCKET/erro.json</code>. O <code>json.loads()</code> vai lançar exceção e o CloudWatch vai registrar o erro.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Alarm demora para mudar de estado?</div>
+        <div class="card-body">Com <code>period = 60</code> e <code>evaluation_periods = 1</code>, o alarm leva até 1 minuto para processar após o erro. Aguarde 2 minutos e verifique com <code>aws cloudwatch describe-alarms</code>.</div>
+      </div>
+    </div>
+
+    <div class="format-card" style="border-color:rgba(63,185,80,.3)">
+      <div class="format-header" style="background:rgba(63,185,80,.05)">
+        <div class="format-icon" style="background:rgba(63,185,80,.1)">✅</div>
+        <div><div class="format-title" style="color:var(--green)">Critério de Sucesso</div></div>
+      </div>
+      <div class="format-body">
+        <div class="code-wrap"><button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+<pre><span class="c-dim"># Verificar estado do alarm — deve ser ALARM após forçar erro</span>
+aws cloudwatch describe-alarms \
+  --alarm-names $(terraform output -raw alarm_name) \
+  --query <span class="c-orange">"MetricAlarms[0].StateValue"</span> \
+  --output text --region us-east-1
+
+<span class="c-dim"># Saída esperada: ALARM</span>
+
+<span class="c-dim"># Verificar subscription confirmada (não deve ser PendingConfirmation)</span>
+aws sns list-subscriptions-by-topic \
+  --topic-arn $(terraform output -raw topic_arn) \
+  --query <span class="c-orange">"Subscriptions[0].SubscriptionArn"</span> \
+  --output text</pre>
+        </div>
+        <p style="font-size:13px;color:var(--dim);margin-top:12px">🎉 <strong>Trilha concluída!</strong> Você provisionou EC2, S3, Lambda, IAM e CloudWatch — tudo como código Terraform. A ShopCloud tem infraestrutura, API, controle de acesso e monitoramento.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Trilha <span>ShopCloud · Terraform + AWS</span> · Cloud Practitioner Journey · Feito com <span>❤️</span>
+</footer>
+
+<script>
+function showTab(id, e) {
+  document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  if (e && e.target) e.target.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function copyCode(btn) {
+  var pre = btn.nextElementSibling;
+  var text = pre.innerText || pre.textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(function() {
+      btn.textContent = '✓ Copiado';
+      setTimeout(function() { btn.textContent = 'Copiar'; }, 2000);
+    }).catch(function() { fallbackCopy(text, btn); });
+  } else { fallbackCopy(text, btn); }
+}
+
+function fallbackCopy(text, btn) {
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+  document.body.removeChild(ta);
+  btn.textContent = '✓ Copiado';
+  setTimeout(function() { btn.textContent = 'Copiar'; }, 2000);
+}
+</script>
+</body>
+</html>
